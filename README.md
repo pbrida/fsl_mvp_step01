@@ -1,3 +1,5 @@
+![CI](https://github.com/pbrida/fsl_mvp_step01/actions/workflows/ci.yml/badge.svg)
+
 # Fantasy Stock League — Step 1 (API Starter)
 
 This starter gives you a **FastAPI** project you can run in VS Code. We'll expand it step-by-step.
