@@ -1,7 +1,13 @@
 # fantasy_stocks/main.py
 from __future__ import annotations
 
-from fastapi import FastAPI
+import json
+import logging
+import os
+import time
+import uuid
+
+from fastapi import FastAPI, Request
 
 # Import router modules (not the variables inside; we'll detect attr names below)
 from .routers import league
@@ -16,13 +22,57 @@ from .routers import scoring
 from .routers import standings_snapshot
 from .routers import boxscore
 from .routers import prices
-from .routers import playoffs  # NEW: playoffs router
-from .routers import season    # <-- season router
+from .routers import playoffs
+from .routers import season
 from .routers import awards
 from .routers import records
 from .routers import analytics
 
+
+# ---------- App ----------
 app = FastAPI(title="Fantasy Stocks MVP", version="0.1.0")
+
+# ---------- Minimal structured logging ----------
+# Configure once; JSON-per-line so logs are ingestion-friendly.
+logging.basicConfig(level=getattr(logging, os.getenv("LOG_LEVEL", "INFO").upper(), logging.INFO))
+logger = logging.getLogger("fantasy_stocks")
+
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    """
+    Add/propagate X-Request-ID and log method/path/status/duration/idempotency-key.
+    Emits a single JSON log line per request (on completion).
+    """
+    start = time.perf_counter()
+
+    # Propagate request id if the client sent one; else generate a new one.
+    request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
+
+    # Let the request proceed.
+    response = await call_next(request)
+
+    # Always return the request id so clients can correlate.
+    response.headers["X-Request-ID"] = request_id
+
+    duration_ms = (time.perf_counter() - start) * 1000.0
+    try:
+        log_obj = {
+            "msg": "request",
+            "request_id": request_id,
+            "method": request.method,
+            "path": request.url.path,
+            "status": response.status_code,
+            "duration_ms": round(duration_ms, 2),
+            "idempotency_key": request.headers.get("Idempotency-Key") or None,
+        }
+        logger.info(json.dumps(log_obj, separators=(",", ":")))
+    except Exception:
+        # Never fail a request due to logging; swallow any logging errors.
+        pass
+
+    return response
+
 
 # ---------- Health ----------
 @app.get("/health/ping")
