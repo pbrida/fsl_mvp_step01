@@ -1,0 +1,25 @@
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+select = ["E", "F", "I", "UP", "B"]  # pyflakes/pycodestyle, isort, pyupgrade, bugbear
+ignore = [
+  "E203",  # whitespace before :
+  "E266",  # too many leading '#'
+]
+fix = true
+
+[tool.ruff.isort]
+known-first-party = ["fantasy_stocks"]
+combine-as-imports = true
+
+[tool.pyright]
+pythonVersion = "3.11"
+typeCheckingMode = "standard"
+reportMissingImports = "warning"
+reportMissingTypeStubs = "none"
+reportUnknownVariableType = "warning"
+reportUnknownMemberType = "warning"
+reportUnknownArgumentType = "warning"
+include = ["fantasy_stocks", "tests"]
+venvPath = "."
+venv = ".venv"
