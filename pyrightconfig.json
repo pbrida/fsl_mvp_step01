@@ -1,11 +1,6 @@
-{
-  "$schema": "https://raw.githubusercontent.com/microsoft/pyright/main/packages/vscode-pyright/schemas/pyrightconfig.schema.json",
+﻿{
   "venvPath": ".",
   "venv": ".venv",
-  "pythonVersion": "3.11",
-  "include": ["."],
-  "exclude": [".venv", "node_modules", "alembic/versions"],
-  "reportMissingImports": "warning",
-  "reportAttributeAccessIssue": "warning",
-  "reportMissingTypeStubs": "none"
+  "reportMissingImports": true,
+  "exclude": [".venv", "node_modules", "**/__pycache__"]
 }
