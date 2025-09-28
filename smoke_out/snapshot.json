@@ -1,0 +1,26 @@
+[
+  {
+    "team_id": 27,
+    "team_name": "Team Alpha",
+    "wins": 1,
+    "losses": 0,
+    "ties": 0,
+    "games_played": 1,
+    "points_for": 114.5,
+    "points_against": 0.0,
+    "point_diff": 114.5,
+    "win_pct": 1.0
+  },
+  {
+    "team_id": 28,
+    "team_name": "Team Beta",
+    "wins": 0,
+    "losses": 1,
+    "ties": 0,
+    "games_played": 1,
+    "points_for": 0.0,
+    "points_against": 114.5,
+    "point_diff": -114.5,
+    "win_pct": 0.0
+  }
+]

@@ -8,10 +8,7 @@
       "module": "uvicorn",
       "args": ["", "--reload", "--host", "127.0.0.1", "--port", "8000"],
       "console": "integratedTerminal",
-      "justMyCode": true,
-      "env": {
-        "PYTHONPATH": ""
-      }
+      "env": { "PYTHONPATH": "" }
     }
   ]
 }

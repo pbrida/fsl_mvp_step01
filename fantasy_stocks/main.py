@@ -9,7 +9,12 @@ import uuid
 
 from fastapi import FastAPI, Request
 
-# Import router modules (not the variables inside; we'll detect attr names below)
+from fantasy_stocks import models  # noqa: F401  (import registers models with Base)
+
+# --- DB bootstrapping: create tables at startup ---
+from fantasy_stocks.db import Base, engine
+
+# Routers
 from .routers import (
     analytics,
     awards,
@@ -33,27 +38,23 @@ from .routers import (
 # ---------- App ----------
 app = FastAPI(title="Fantasy Stocks MVP", version="0.1.0")
 
+
+# Create tables once on app start
+@app.on_event("startup")
+def _create_tables() -> None:
+    Base.metadata.create_all(bind=engine)
+
+
 # ---------- Minimal structured logging ----------
-# Configure once; JSON-per-line so logs are ingestion-friendly.
 logging.basicConfig(level=getattr(logging, os.getenv("LOG_LEVEL", "INFO").upper(), logging.INFO))
 logger = logging.getLogger("fantasy_stocks")
 
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
-    """
-    Add/propagate X-Request-ID and log method/path/status/duration/idempotency-key.
-    Emits a single JSON log line per request (on completion).
-    """
     start = time.perf_counter()
-
-    # Propagate request id if the client sent one; else generate a new one.
     request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
-
-    # Let the request proceed.
     response = await call_next(request)
-
-    # Always return the request id so clients can correlate.
     response.headers["X-Request-ID"] = request_id
 
     duration_ms = (time.perf_counter() - start) * 1000.0
@@ -69,9 +70,7 @@ async def log_requests(request: Request, call_next):
         }
         logger.info(json.dumps(log_obj, separators=(",", ":")))
     except Exception:
-        # Never fail a request due to logging; swallow any logging errors.
         pass
-
     return response
 
 
@@ -82,10 +81,6 @@ def ping():
 
 
 def _include_router_flex(app: FastAPI, module) -> None:
-    """
-    Include a router from a module that may expose `router` or `route`.
-    Raises a clear error if neither is present.
-    """
     for attr in ("router", "route"):
         if hasattr(module, attr):
             app.include_router(getattr(module, attr))
@@ -94,7 +89,7 @@ def _include_router_flex(app: FastAPI, module) -> None:
     raise RuntimeError(f"Module {name} does not define `router` or `route`")
 
 
-# ---------- Include Routers (accepts either `router` or `route`) ----------
+# ---------- Include Routers ----------
 _include_router_flex(app, league)  # /leagues
 _include_router_flex(app, draft)  # /draft
 _include_router_flex(app, lineup)  # /lineup

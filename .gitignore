@@ -20,3 +20,6 @@ __pycache__/
 *.db-journal
 
 .env
+
+smoke_out/
+
