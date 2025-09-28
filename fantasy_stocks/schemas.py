@@ -1,7 +1,6 @@
 # fantasy_stocks/schemas.py
 from __future__ import annotations
 
-from typing import Optional, Dict, List
 from datetime import date
 from enum import Enum
 
@@ -23,7 +22,7 @@ class LeagueCreate(BaseModel):
     name: str
     roster_slots: int = 14
     starters: int = 8
-    bucket_requirements: Optional[Dict[str, int]] = None
+    bucket_requirements: dict[str, int] | None = None
     # default to projections; router may ignore user roster settings but we allow passing mode
     scoring_mode: ScoringMode = ScoringMode.PROJECTIONS
 
@@ -33,7 +32,7 @@ class LeagueOut(BaseModel):
     name: str
     roster_slots: int
     starters: int
-    bucket_requirements: Optional[Dict[str, int]] = None
+    bucket_requirements: dict[str, int] | None = None
     scoring_mode: ScoringMode
 
     # Pydantic v2 replacement for Config(orm_mode=True)
@@ -58,13 +57,13 @@ class LeagueModeUpdate(BaseModel):
 # -----------------------
 class JoinLeague(BaseModel):
     name: str
-    owner: Optional[str] = None
+    owner: str | None = None
 
 
 class TeamOut(BaseModel):
     id: int
     name: str
-    owner: Optional[str] = None
+    owner: str | None = None
     league_id: int
 
     model_config = ConfigDict(from_attributes=True)
@@ -76,8 +75,8 @@ class TeamOut(BaseModel):
 class DraftPickIn(BaseModel):
     team_id: int
     symbol: str
-    round: Optional[int] = None
-    pick_no: Optional[int] = None
+    round: int | None = None
+    pick_no: int | None = None
 
 
 class DraftPickOut(BaseModel):
@@ -96,7 +95,7 @@ class RosterSlotOut(BaseModel):
     team_id: int
     symbol: str
     is_active: bool
-    bucket: Optional[str] = None
+    bucket: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -110,20 +109,20 @@ class SetBucketIn(BaseModel):
 # -----------------------
 class SetLineupIn(BaseModel):
     team_id: int
-    slot_ids: List[int]
+    slot_ids: list[int]
 
 
 class LineupOut(BaseModel):
     team_id: int
-    starters: List[RosterSlotOut]
-    bench: List[RosterSlotOut]
+    starters: list[RosterSlotOut]
+    bench: list[RosterSlotOut]
 
 
 # -----------------------
 # Schedule / Matches
 # -----------------------
 class GenerateScheduleIn(BaseModel):
-    start_week: Optional[str] = None  # e.g., "2025-W39"
+    start_week: str | None = None  # e.g., "2025-W39"
 
 
 class MatchOut(BaseModel):
@@ -132,9 +131,9 @@ class MatchOut(BaseModel):
     week: str
     home_team_id: int
     away_team_id: int
-    home_points: Optional[float] = None
-    away_points: Optional[float] = None
-    winner_team_id: Optional[int] = None
+    home_points: float | None = None
+    away_points: float | None = None
+    winner_team_id: int | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -168,8 +167,8 @@ class TableRow(BaseModel):
 class PriceIn(BaseModel):
     symbol: str
     date: date
-    open: Optional[float] = None
-    close: Optional[float] = None
+    open: float | None = None
+    close: float | None = None
 
 
 class PriceUpsertResult(BaseModel):

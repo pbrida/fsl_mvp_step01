@@ -1,25 +1,27 @@
 # fantasy_stocks/routers/season.py
 from __future__ import annotations
 
-from typing import Dict, Any, List, Optional, Tuple
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
-from sqlalchemy import and_, or_
+from typing import Any
 
-from ..db import get_db
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import and_, or_
+from sqlalchemy.orm import Session
+
 from .. import models
+from ..db import get_db
 from ..services.periods import current_week_label
+from .playoffs import _seed_order_by_tiebreakers  # seeds teams using your tiebreakers
 
 # Reuse helpers from existing routers
 from .standings import _score_league_for_period
-from .playoffs import _seed_order_by_tiebreakers  # seeds teams using your tiebreakers
 
 router = APIRouter(prefix="/season", tags=["season"])
 
 
 # ---------- Week helpers (regular + playoffs) ----------
 
-def _earliest_unscored_week(db: Session, league_id: int) -> Optional[str]:
+
+def _earliest_unscored_week(db: Session, league_id: int) -> str | None:
     """
     Any week label (regular or playoff) that has at least one unscored match.
     Return the lexicographically earliest label to keep things deterministic.
@@ -40,7 +42,7 @@ def _earliest_unscored_week(db: Session, league_id: int) -> Optional[str]:
     return weeks[0]
 
 
-def _find_weeks_like_suffix(db: Session, league_id: int, suffix: str) -> List[str]:
+def _find_weeks_like_suffix(db: Session, league_id: int, suffix: str) -> list[str]:
     """Return distinct week labels that end with the given suffix, e.g. '-PO-SF', '-PO-F', '-PO-3P'."""
     rows = (
         db.query(models.Match.week)
@@ -51,7 +53,7 @@ def _find_weeks_like_suffix(db: Session, league_id: int, suffix: str) -> List[st
     return [w[0] for w in rows]
 
 
-def _get_matches_for_week(db: Session, league_id: int, week: str) -> List[models.Match]:
+def _get_matches_for_week(db: Session, league_id: int, week: str) -> list[models.Match]:
     return (
         db.query(models.Match)
         .filter(and_(models.Match.league_id == league_id, models.Match.week == week))
@@ -59,13 +61,14 @@ def _get_matches_for_week(db: Session, league_id: int, week: str) -> List[models
     )
 
 
-def _are_all_scored(ms: List[models.Match]) -> bool:
+def _are_all_scored(ms: list[models.Match]) -> bool:
     return all(m.home_points is not None and m.away_points is not None for m in ms)
 
 
 # ---------- Semifinals (generate & query) ----------
 
-def _ensure_semifinals(db: Session, league_id: int) -> Dict[str, Any]:
+
+def _ensure_semifinals(db: Session, league_id: int) -> dict[str, Any]:
     """
     Ensure two semifinal matches exist. If they already exist, return them.
     Otherwise, create with seeds: 1v4 and 2v3 (home is higher seed).
@@ -83,7 +86,7 @@ def _ensure_semifinals(db: Session, league_id: int) -> Dict[str, Any]:
             ],
         }
 
-    seeds: List[int] = _seed_order_by_tiebreakers(db, league_id)
+    seeds: list[int] = _seed_order_by_tiebreakers(db, league_id)
     if len(seeds) < 4:
         raise HTTPException(status_code=400, detail="Need at least 4 teams for playoffs")
 
@@ -95,7 +98,8 @@ def _ensure_semifinals(db: Session, league_id: int) -> Dict[str, Any]:
     m2 = models.Match(league_id=league_id, week=week_sf, home_team_id=s2, away_team_id=s3)
     db.add_all([m1, m2])
     db.commit()
-    db.refresh(m1); db.refresh(m2)
+    db.refresh(m1)
+    db.refresh(m2)
     return {
         "week": week_sf,
         "semifinals": [
@@ -105,7 +109,9 @@ def _ensure_semifinals(db: Session, league_id: int) -> Dict[str, Any]:
     }
 
 
-def _winners_and_losers_of_semis(db: Session, league_id: int) -> Optional[Tuple[Tuple[int, int], Tuple[int, int]]]:
+def _winners_and_losers_of_semis(
+    db: Session, league_id: int
+) -> tuple[tuple[int, int], tuple[int, int]] | None:
     """
     Return ((winnerA, winnerB),(loserA, loserB)) if both semifinals exist and are scored; else None.
     """
@@ -117,8 +123,9 @@ def _winners_and_losers_of_semis(db: Session, league_id: int) -> Optional[Tuple[
     if len(semis) < 2 or not _are_all_scored(semis):
         return None
 
-    def _winner_loser(m: models.Match) -> Tuple[int, int]:
-        hp = float(m.home_points or 0.0); ap = float(m.away_points or 0.0)
+    def _winner_loser(m: models.Match) -> tuple[int, int]:
+        hp = float(m.home_points or 0.0)
+        ap = float(m.away_points or 0.0)
         # Prefer explicit winner if set
         if m.winner_team_id is not None:
             win = m.winner_team_id
@@ -136,7 +143,8 @@ def _winners_and_losers_of_semis(db: Session, league_id: int) -> Optional[Tuple[
 
 # ---------- Finals & Bronze (generate, query, champion) ----------
 
-def _ensure_finals(db: Session, league_id: int) -> Dict[str, Any]:
+
+def _ensure_finals(db: Session, league_id: int) -> dict[str, Any]:
     """
     If finals exist, return meta; else, create finals using winners of semis.
     Home team is the higher seed among the two finalists.
@@ -162,21 +170,23 @@ def _ensure_finals(db: Session, league_id: int) -> Dict[str, Any]:
         raise HTTPException(status_code=400, detail="Semifinals not decided")
     (wA, wB), _ = res
 
-    seeds: List[int] = _seed_order_by_tiebreakers(db, league_id)
+    seeds: list[int] = _seed_order_by_tiebreakers(db, league_id)
     rank = {tid: i for i, tid in enumerate(seeds, start=1)}
     home, away = (wA, wB) if rank.get(wA, 9999) < rank.get(wB, 9999) else (wB, wA)
 
     base = current_week_label()
     week_f = f"{base}-PO-F"
     fm = models.Match(league_id=league_id, week=week_f, home_team_id=home, away_team_id=away)
-    db.add(fm); db.commit(); db.refresh(fm)
+    db.add(fm)
+    db.commit()
+    db.refresh(fm)
     return {
         "week": week_f,
         "final": {"id": fm.id, "home_team_id": fm.home_team_id, "away_team_id": fm.away_team_id},
     }
 
 
-def _ensure_bronze(db: Session, league_id: int) -> Dict[str, Any]:
+def _ensure_bronze(db: Session, league_id: int) -> dict[str, Any]:
     """
     If bronze match exists, return it; else, create bronze using semifinal losers.
     Home team is the higher seed among the two losers.
@@ -198,21 +208,23 @@ def _ensure_bronze(db: Session, league_id: int) -> Dict[str, Any]:
         raise HTTPException(status_code=400, detail="Semifinals not decided")
     _, (lA, lB) = res
 
-    seeds: List[int] = _seed_order_by_tiebreakers(db, league_id)
+    seeds: list[int] = _seed_order_by_tiebreakers(db, league_id)
     rank = {tid: i for i, tid in enumerate(seeds, start=1)}
     home, away = (lA, lB) if rank.get(lA, 9999) < rank.get(lB, 9999) else (lB, lA)
 
     base = current_week_label()
     week_b = f"{base}-PO-3P"
     bm = models.Match(league_id=league_id, week=week_b, home_team_id=home, away_team_id=away)
-    db.add(bm); db.commit(); db.refresh(bm)
+    db.add(bm)
+    db.commit()
+    db.refresh(bm)
     return {
         "week": week_b,
         "bronze": {"id": bm.id, "home_team_id": bm.home_team_id, "away_team_id": bm.away_team_id},
     }
 
 
-def _finals_state(db: Session, league_id: int) -> Optional[Dict[str, Any]]:
+def _finals_state(db: Session, league_id: int) -> dict[str, Any] | None:
     weeks = _find_weeks_like_suffix(db, league_id, "-PO-F")
     if not weeks:
         return None
@@ -225,7 +237,9 @@ def _finals_state(db: Session, league_id: int) -> Optional[Dict[str, Any]]:
     return {"week": week_f, "match": m, "scored": scored}
 
 
-def _champion_from_finals_state(state: Dict[str, Any], league_id: int, db: Session) -> Optional[Dict[str, Any]]:
+def _champion_from_finals_state(
+    state: dict[str, Any], league_id: int, db: Session
+) -> dict[str, Any] | None:
     m: models.Match = state["match"]
     if not state["scored"]:
         return None
@@ -234,9 +248,13 @@ def _champion_from_finals_state(state: Dict[str, Any], league_id: int, db: Sessi
         champ_id = m.winner_team_id
     else:
         # Tie fallback: higher seed among finalists
-        seeds: List[int] = _seed_order_by_tiebreakers(db, league_id)
+        seeds: list[int] = _seed_order_by_tiebreakers(db, league_id)
         rank = {tid: i for i, tid in enumerate(seeds, start=1)}
-        champ_id = m.home_team_id if rank.get(m.home_team_id, 9999) < rank.get(m.away_team_id, 9999) else m.away_team_id
+        champ_id = (
+            m.home_team_id
+            if rank.get(m.home_team_id, 9999) < rank.get(m.away_team_id, 9999)
+            else m.away_team_id
+        )
 
     champ = db.get(models.Team, champ_id)
     return {
@@ -248,6 +266,7 @@ def _champion_from_finals_state(state: Dict[str, Any], league_id: int, db: Sessi
 
 
 # ---------- State computation ----------
+
 
 def _compute_state(db: Session, league_id: int) -> str:
     """
@@ -269,8 +288,9 @@ def _compute_state(db: Session, league_id: int) -> str:
 
 # ---------- Public endpoints ----------
 
+
 @router.get("/{league_id}/state")
-def season_state(league_id: int, db: Session = Depends(get_db)) -> Dict[str, Any]:
+def season_state(league_id: int, db: Session = Depends(get_db)) -> dict[str, Any]:
     league = db.get(models.League, league_id)
     if not league:
         raise HTTPException(status_code=404, detail="League not found")
@@ -282,7 +302,7 @@ def _team_name(db: Session, team_id: int) -> str:
     return t.name if t else f"Team {team_id}"
 
 
-def _serialize_match(db: Session, m: models.Match) -> Dict[str, Any]:
+def _serialize_match(db: Session, m: models.Match) -> dict[str, Any]:
     return {
         "id": m.id,
         "week": m.week,
@@ -297,7 +317,7 @@ def _serialize_match(db: Session, m: models.Match) -> Dict[str, Any]:
 
 
 @router.get("/{league_id}/bracket")
-def season_bracket(league_id: int, db: Session = Depends(get_db)) -> Dict[str, Any]:
+def season_bracket(league_id: int, db: Session = Depends(get_db)) -> dict[str, Any]:
     """
     Read-only bracket view for clients to render the playoff tree:
     {
@@ -313,12 +333,12 @@ def season_bracket(league_id: int, db: Session = Depends(get_db)) -> Dict[str, A
         raise HTTPException(status_code=404, detail="League not found")
 
     state = _compute_state(db, league_id)
-    seeds: List[int] = _seed_order_by_tiebreakers(db, league_id)
+    seeds: list[int] = _seed_order_by_tiebreakers(db, league_id)
 
     # Semis
     sf_weeks = _find_weeks_like_suffix(db, league_id, "-PO-SF")
     semifinals_week = sorted(sf_weeks)[0] if sf_weeks else None
-    semifinals: List[Dict[str, Any]] = []
+    semifinals: list[dict[str, Any]] = []
     if semifinals_week:
         for m in _get_matches_for_week(db, league_id, semifinals_week):
             semifinals.append(_serialize_match(db, m))
@@ -326,7 +346,7 @@ def season_bracket(league_id: int, db: Session = Depends(get_db)) -> Dict[str, A
     # Bronze
     br_weeks = _find_weeks_like_suffix(db, league_id, "-PO-3P")
     bronze_week = sorted(br_weeks)[0] if br_weeks else None
-    bronze: Optional[Dict[str, Any]] = None
+    bronze: dict[str, Any] | None = None
     if bronze_week:
         ms = _get_matches_for_week(db, league_id, bronze_week)
         if ms:
@@ -362,7 +382,7 @@ def season_bracket(league_id: int, db: Session = Depends(get_db)) -> Dict[str, A
 
 
 @router.post("/{league_id}/advance")
-def advance_season(league_id: int, db: Session = Depends(get_db)) -> Dict[str, Any]:
+def advance_season(league_id: int, db: Session = Depends(get_db)) -> dict[str, Any]:
     """
     One-click commissioner flow:
       1) If there are unscored weeks (regular or playoff), score the earliest one.
@@ -382,7 +402,12 @@ def advance_season(league_id: int, db: Session = Depends(get_db)) -> Dict[str, A
     # No matches at all?
     total_matches = db.query(models.Match).filter(models.Match.league_id == league_id).count()
     if total_matches == 0:
-        return {"ok": True, "action": "idle", "reason": "no matches", "state": _compute_state(db, league_id)}
+        return {
+            "ok": True,
+            "action": "idle",
+            "reason": "no matches",
+            "state": _compute_state(db, league_id),
+        }
 
     # 1) Score earliest unscored week (covers regular season, bronze, finals, semis)
     wk = _earliest_unscored_week(db, league_id)
@@ -420,7 +445,9 @@ def advance_season(league_id: int, db: Session = Depends(get_db)) -> Dict[str, A
     semis_exist = _find_weeks_like_suffix(db, league_id, "-PO-SF")
     if not semis_exist:
         semis = _ensure_semifinals(db, league_id)
-        semis.update({"ok": True, "action": "generated_playoffs", "state": _compute_state(db, league_id)})
+        semis.update(
+            {"ok": True, "action": "generated_playoffs", "state": _compute_state(db, league_id)}
+        )
         return semis
 
     # 3) If semis are scored but finals/bronze don't exist, create both
@@ -430,7 +457,7 @@ def advance_season(league_id: int, db: Session = Depends(get_db)) -> Dict[str, A
         # Only proceed if semis are decided
         res = _winners_and_losers_of_semis(db, league_id)
         if res:
-            out: Dict[str, Any] = {"ok": True, "action": "generated_finals_and_bronze"}
+            out: dict[str, Any] = {"ok": True, "action": "generated_finals_and_bronze"}
             if finals_state is None:
                 out.update(_ensure_finals(db, league_id))
             if not bronze_exist:

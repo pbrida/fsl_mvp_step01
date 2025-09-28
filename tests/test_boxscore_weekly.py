@@ -1,28 +1,100 @@
 # tests/test_boxscore_weekly.py
 
+
 def test_boxscore_shows_primary_and_flex_and_totals(client):
     # Ensure a clean catalog so results are deterministic
     client.post("/players/reset")
 
     # Seed symbols with buckets and proj_points
-    r = client.post("/players/seed", json=[
-        {"symbol": "LC1", "name": "LC1", "is_etf": False, "market_cap": 2e11, "primary_bucket": "LARGE_CAP", "proj_points": 12.0},
-        {"symbol": "LC2", "name": "LC2", "is_etf": False, "market_cap": 2e11, "primary_bucket": "LARGE_CAP", "proj_points": 11.0},
-        {"symbol": "LC3", "name": "LC3", "is_etf": False, "market_cap": 2e11, "primary_bucket": "LARGE_CAP", "proj_points": 10.0},
-
-        {"symbol": "MC1", "name": "MC1", "is_etf": False, "market_cap": 5e9,  "primary_bucket": "MID_CAP",   "proj_points": 9.0},
-        {"symbol": "SC1", "name": "SC1", "is_etf": False, "market_cap": 1e9,  "primary_bucket": "SMALL_CAP", "proj_points": 8.0},
-        {"symbol": "SC2", "name": "SC2", "is_etf": False, "market_cap": 1e9,  "primary_bucket": "SMALL_CAP", "proj_points": 7.0},
-        {"symbol": "SC3", "name": "SC3", "is_etf": False, "market_cap": 1e9,  "primary_bucket": "SMALL_CAP", "proj_points": 6.0},
-
-        {"symbol": "ET1", "name": "ET1", "is_etf": True,  "market_cap": 1e11, "primary_bucket": "ETF",       "proj_points": 5.0},
-
-        {"symbol": "X1",  "name": "X1",  "is_etf": False, "market_cap": 8e10, "primary_bucket": "LARGE_CAP", "proj_points": 4.0},
-    ])
+    r = client.post(
+        "/players/seed",
+        json=[
+            {
+                "symbol": "LC1",
+                "name": "LC1",
+                "is_etf": False,
+                "market_cap": 2e11,
+                "primary_bucket": "LARGE_CAP",
+                "proj_points": 12.0,
+            },
+            {
+                "symbol": "LC2",
+                "name": "LC2",
+                "is_etf": False,
+                "market_cap": 2e11,
+                "primary_bucket": "LARGE_CAP",
+                "proj_points": 11.0,
+            },
+            {
+                "symbol": "LC3",
+                "name": "LC3",
+                "is_etf": False,
+                "market_cap": 2e11,
+                "primary_bucket": "LARGE_CAP",
+                "proj_points": 10.0,
+            },
+            {
+                "symbol": "MC1",
+                "name": "MC1",
+                "is_etf": False,
+                "market_cap": 5e9,
+                "primary_bucket": "MID_CAP",
+                "proj_points": 9.0,
+            },
+            {
+                "symbol": "SC1",
+                "name": "SC1",
+                "is_etf": False,
+                "market_cap": 1e9,
+                "primary_bucket": "SMALL_CAP",
+                "proj_points": 8.0,
+            },
+            {
+                "symbol": "SC2",
+                "name": "SC2",
+                "is_etf": False,
+                "market_cap": 1e9,
+                "primary_bucket": "SMALL_CAP",
+                "proj_points": 7.0,
+            },
+            {
+                "symbol": "SC3",
+                "name": "SC3",
+                "is_etf": False,
+                "market_cap": 1e9,
+                "primary_bucket": "SMALL_CAP",
+                "proj_points": 6.0,
+            },
+            {
+                "symbol": "ET1",
+                "name": "ET1",
+                "is_etf": True,
+                "market_cap": 1e11,
+                "primary_bucket": "ETF",
+                "proj_points": 5.0,
+            },
+            {
+                "symbol": "X1",
+                "name": "X1",
+                "is_etf": False,
+                "market_cap": 8e10,
+                "primary_bucket": "LARGE_CAP",
+                "proj_points": 4.0,
+            },
+        ],
+    )
     assert r.status_code == 200, r.text
 
     # League + one team
-    r = client.post("/leagues/", json={"name": "Box League", "roster_slots": 14, "starters": 8, "bucket_requirements": {"X": 8}})
+    r = client.post(
+        "/leagues/",
+        json={
+            "name": "Box League",
+            "roster_slots": 14,
+            "starters": 8,
+            "bucket_requirements": {"X": 8},
+        },
+    )
     assert r.status_code == 200, r.text
     league_id = r.json()["id"]
 
@@ -31,7 +103,7 @@ def test_boxscore_shows_primary_and_flex_and_totals(client):
     team_id = r.json()["id"]
 
     # Draft >8 symbols so one is benched automatically
-    picks = ["LC1","LC2","LC3","MC1","SC1","SC2","SC3","ET1","X1"]
+    picks = ["LC1", "LC2", "LC3", "MC1", "SC1", "SC2", "SC3", "ET1", "X1"]
     for sym in picks:
         rr = client.post("/draft/pick", json={"team_id": team_id, "symbol": sym})
         assert rr.status_code == 200, rr.text

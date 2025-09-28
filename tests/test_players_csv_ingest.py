@@ -1,5 +1,6 @@
 # tests/test_players_csv_ingest.py
 
+
 def test_players_csv_ingest_and_search(client):
     # Reset catalog to avoid cross-test pollution
     client.post("/players/reset")
@@ -10,7 +11,6 @@ VTI,Vanguard Total Market,true,300000000000,ETF,ETF
 SHOP,Shopify,false,80000000000,Technology,SMALL_CAP
 """
     # ... rest unchanged ...
-
 
     # Ingest
     r = client.post("/players/ingest_csv", json={"csv": csv_text, "upsert": True})

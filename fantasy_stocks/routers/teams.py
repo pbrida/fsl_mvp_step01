@@ -1,18 +1,17 @@
 # fantasy_stocks/routers/teams.py
 from __future__ import annotations
 
-from typing import Dict, Optional
 from fastapi import APIRouter, Depends, HTTPException, Path
 from sqlalchemy.orm import Session
 
-from ..db import get_db
 from .. import models
+from ..db import get_db
 
 router = APIRouter(prefix="/teams", tags=["teams"])
 
 # Fixed roster requirements (as agreed):
 # 2 LARGE_CAP, 1 MID_CAP, 2 SMALL_CAP, 1 ETF, 2 FLEX (total starters = 8)
-PRIMARY_REQUIREMENTS: Dict[str, int] = {
+PRIMARY_REQUIREMENTS: dict[str, int] = {
     "LARGE_CAP": 2,
     "MID_CAP": 1,
     "SMALL_CAP": 2,
@@ -53,7 +52,7 @@ def team_needs(team_id: int = Path(..., ge=1), db: Session = Depends(get_db)):
     )
 
     # Count active by bucket (ignore None)
-    raw_counts: Dict[str, int] = {}
+    raw_counts: dict[str, int] = {}
     for rs in active_slots:
         b = (rs.bucket or "").strip().upper()
         if not b:
@@ -61,7 +60,7 @@ def team_needs(team_id: int = Path(..., ge=1), db: Session = Depends(get_db)):
         raw_counts[b] = raw_counts.get(b, 0) + 1
 
     # 2) Allocate toward primary requirements
-    primary_got: Dict[str, int] = {}
+    primary_got: dict[str, int] = {}
     for bucket, need in PRIMARY_REQUIREMENTS.items():
         got = min(raw_counts.get(bucket, 0), need)
         primary_got[bucket] = got
@@ -71,11 +70,11 @@ def team_needs(team_id: int = Path(..., ge=1), db: Session = Depends(get_db)):
     for bucket, need in PRIMARY_REQUIREMENTS.items():
         count_b = raw_counts.get(bucket, 0)
         if count_b > need:
-            surplus += (count_b - need)
+            surplus += count_b - need
     flex_got = min(surplus, FLEX_SLOTS)
 
     # Needs
-    needs: Dict[str, Dict[str, int]] = {}
+    needs: dict[str, dict[str, int]] = {}
     for bucket, need in PRIMARY_REQUIREMENTS.items():
         got = primary_got[bucket]
         needs[bucket] = {"need": need, "got": got}

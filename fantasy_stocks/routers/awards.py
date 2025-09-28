@@ -1,26 +1,30 @@
 # fantasy_stocks/routers/awards.py
 from __future__ import annotations
 
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Any
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from ..db import get_db
 from .. import models
+from ..db import get_db
 
 router = APIRouter(prefix="/awards", tags=["awards"])
 
 
 # ---------- Helpers (null-safe floats, names, latest period) ----------
 
-def _to_float(x: Optional[float]) -> float:
+
+def _to_float(x: float | None) -> float:
     return 0.0 if x is None else float(x)
+
 
 def _team_name(db: Session, team_id: int) -> str:
     t = db.get(models.Team, team_id)
     return t.name if t else f"Team {team_id}"
 
-def _latest_scored_period(db: Session, league_id: int) -> Optional[str]:
+
+def _latest_scored_period(db: Session, league_id: int) -> str | None:
     row = (
         db.query(models.TeamScore.period)
         .filter(models.TeamScore.league_id == league_id)
@@ -29,7 +33,8 @@ def _latest_scored_period(db: Session, league_id: int) -> Optional[str]:
     )
     return row[0] if row else None
 
-def _serialize_match(db: Session, m: models.Match) -> Dict[str, Any]:
+
+def _serialize_match(db: Session, m: models.Match) -> dict[str, Any]:
     return {
         "id": m.id,
         "week": m.week,
@@ -42,7 +47,8 @@ def _serialize_match(db: Session, m: models.Match) -> Dict[str, Any]:
         "winner_team_id": m.winner_team_id,
     }
 
-def _matches_for_week(db: Session, league_id: int, period: str) -> List[models.Match]:
+
+def _matches_for_week(db: Session, league_id: int, period: str) -> list[models.Match]:
     return (
         db.query(models.Match)
         .filter(
@@ -54,7 +60,8 @@ def _matches_for_week(db: Session, league_id: int, period: str) -> List[models.M
         .all()
     )
 
-def _all_scored_matches(db: Session, league_id: int) -> List[models.Match]:
+
+def _all_scored_matches(db: Session, league_id: int) -> list[models.Match]:
     return (
         db.query(models.Match)
         .filter(
@@ -66,7 +73,8 @@ def _all_scored_matches(db: Session, league_id: int) -> List[models.Match]:
         .all()
     )
 
-def _all_team_scores(db: Session, league_id: int) -> List[models.TeamScore]:
+
+def _all_team_scores(db: Session, league_id: int) -> list[models.TeamScore]:
     return (
         db.query(models.TeamScore)
         .filter(models.TeamScore.league_id == league_id)
@@ -74,10 +82,14 @@ def _all_team_scores(db: Session, league_id: int) -> List[models.TeamScore]:
         .all()
     )
 
+
 # ---------- Weekly Awards ----------
 
+
 @router.get("/{league_id}/weekly")
-def weekly_awards(league_id: int, period: Optional[str] = None, db: Session = Depends(get_db)) -> Dict[str, Any]:
+def weekly_awards(
+    league_id: int, period: str | None = None, db: Session = Depends(get_db)
+) -> dict[str, Any]:
     """
     Weekly Awards from scored matches. If 'period' omitted, uses latest scored week.
     Returns: top_scorer, narrowest_win, blowout, highest_scoring_game (or nulls if no data).
@@ -119,9 +131,10 @@ def weekly_awards(league_id: int, period: Optional[str] = None, db: Session = De
     # Narrowest & Blowout (only non-tied games)
     narrow = None
     blow = None
-    wins: List[Tuple[models.Match, float]] = []
+    wins: list[tuple[models.Match, float]] = []
     for m in matches:
-        hp = _to_float(m.home_points); ap = _to_float(m.away_points)
+        hp = _to_float(m.home_points)
+        ap = _to_float(m.away_points)
         if hp != ap:
             wins.append((m, abs(hp - ap)))
     if wins:
@@ -133,8 +146,10 @@ def weekly_awards(league_id: int, period: Optional[str] = None, db: Session = De
     # Highest-scoring game by total points
     high = None
     if matches:
+
         def total(m_: models.Match) -> float:
             return _to_float(m_.home_points) + _to_float(m_.away_points)
+
         hm = max(matches, key=total)
         high = _serialize_match(db, hm)
 
@@ -148,30 +163,49 @@ def weekly_awards(league_id: int, period: Optional[str] = None, db: Session = De
         "highest_scoring_game": high,
     }
 
+
 # ---------- Season Awards ----------
 
-def _aggregate_season_stats(db: Session, league_id: int) -> Dict[int, Dict[str, float]]:
+
+def _aggregate_season_stats(db: Session, league_id: int) -> dict[int, dict[str, float]]:
     """
     Aggregate PF/PA, wins/losses/ties, games_played per team from scored matches.
     Returns { team_id: {pf, pa, w, l, t, gp, win_pct, point_diff} }
     """
-    stats: Dict[int, Dict[str, float]] = {}
+    stats: dict[int, dict[str, float]] = {}
     # Initialize for all teams (so teams with 0 games still appear, with 0s)
     for t in db.query(models.Team).filter(models.Team.league_id == league_id).all():
-        stats[t.id] = {"pf": 0.0, "pa": 0.0, "w": 0.0, "l": 0.0, "t": 0.0, "gp": 0.0, "win_pct": 0.0, "point_diff": 0.0}
+        stats[t.id] = {
+            "pf": 0.0,
+            "pa": 0.0,
+            "w": 0.0,
+            "l": 0.0,
+            "t": 0.0,
+            "gp": 0.0,
+            "win_pct": 0.0,
+            "point_diff": 0.0,
+        }
 
     for m in _all_scored_matches(db, league_id):
-        hp = _to_float(m.home_points); ap = _to_float(m.away_points)
-        a = stats[m.home_team_id]; b = stats[m.away_team_id]
-        a["gp"] += 1; b["gp"] += 1
-        a["pf"] += hp; a["pa"] += ap
-        b["pf"] += ap; b["pa"] += hp
+        hp = _to_float(m.home_points)
+        ap = _to_float(m.away_points)
+        a = stats[m.home_team_id]
+        b = stats[m.away_team_id]
+        a["gp"] += 1
+        b["gp"] += 1
+        a["pf"] += hp
+        a["pa"] += ap
+        b["pf"] += ap
+        b["pa"] += hp
         if hp > ap:
-            a["w"] += 1; b["l"] += 1
+            a["w"] += 1
+            b["l"] += 1
         elif ap > hp:
-            b["w"] += 1; a["l"] += 1
+            b["w"] += 1
+            a["l"] += 1
         else:
-            a["t"] += 1; b["t"] += 1
+            a["t"] += 1
+            b["t"] += 1
 
     # finalize
     for rec in stats.values():
@@ -182,7 +216,7 @@ def _aggregate_season_stats(db: Session, league_id: int) -> Dict[int, Dict[str, 
     return stats
 
 
-def _team_week_high(db: Session, league_id: int) -> Optional[Dict[str, Any]]:
+def _team_week_high(db: Session, league_id: int) -> dict[str, Any] | None:
     """Best single-week TeamScore."""
     rows = _all_team_scores(db, league_id)
     if not rows:
@@ -196,24 +230,28 @@ def _team_week_high(db: Session, league_id: int) -> Optional[Dict[str, Any]]:
     }
 
 
-def _game_total_high(db: Session, league_id: int) -> Optional[Dict[str, Any]]:
+def _game_total_high(db: Session, league_id: int) -> dict[str, Any] | None:
     matches = _all_scored_matches(db, league_id)
     if not matches:
         return None
+
     def total(m: models.Match) -> float:
         return _to_float(m.home_points) + _to_float(m.away_points)
+
     m = max(matches, key=total)
     out = _serialize_match(db, m)
     out["total_points"] = total(m)
     return out
 
 
-def _blowout_high(db: Session, league_id: int) -> Optional[Dict[str, Any]]:
+def _blowout_high(db: Session, league_id: int) -> dict[str, Any] | None:
     matches = _all_scored_matches(db, league_id)
     if not matches:
         return None
+
     def margin(m: models.Match) -> float:
         return abs(_to_float(m.home_points) - _to_float(m.away_points))
+
     m = max(matches, key=margin)
     out = _serialize_match(db, m)
     out["margin"] = margin(m)
@@ -221,7 +259,7 @@ def _blowout_high(db: Session, league_id: int) -> Optional[Dict[str, Any]]:
 
 
 @router.get("/{league_id}/season")
-def season_awards(league_id: int, db: Session = Depends(get_db)) -> Dict[str, Any]:
+def season_awards(league_id: int, db: Session = Depends(get_db)) -> dict[str, Any]:
     """
     Season Awards (regular season to date), derived from scored matches.
 
@@ -254,7 +292,9 @@ def season_awards(league_id: int, db: Session = Depends(get_db)) -> Dict[str, An
         }
 
     # winningest by (win_pct, point_diff)
-    winningest_tid = max(stats.keys(), key=lambda tid: (stats[tid]["win_pct"], stats[tid]["point_diff"]))
+    winningest_tid = max(
+        stats.keys(), key=lambda tid: (stats[tid]["win_pct"], stats[tid]["point_diff"])
+    )
     winningest = {
         "team_id": winningest_tid,
         "team_name": _team_name(db, winningest_tid),
@@ -264,14 +304,22 @@ def season_awards(league_id: int, db: Session = Depends(get_db)) -> Dict[str, An
 
     # MVP offense: highest total PF
     mvp_tid = max(stats.keys(), key=lambda tid: stats[tid]["pf"])
-    mvp = {"team_id": mvp_tid, "team_name": _team_name(db, mvp_tid), "points_for": stats[mvp_tid]["pf"]}
+    mvp = {
+        "team_id": mvp_tid,
+        "team_name": _team_name(db, mvp_tid),
+        "points_for": stats[mvp_tid]["pf"],
+    }
 
     # Best defense: lowest total PA (require gp>0 to be fair)
     eligible = [tid for tid, rec in stats.items() if rec["gp"] > 0]
     bestd = None
     if eligible:
         bd_tid = min(eligible, key=lambda tid: stats[tid]["pa"])
-        bestd = {"team_id": bd_tid, "team_name": _team_name(db, bd_tid), "points_against": stats[bd_tid]["pa"]}
+        bestd = {
+            "team_id": bd_tid,
+            "team_name": _team_name(db, bd_tid),
+            "points_against": stats[bd_tid]["pa"],
+        }
 
     highest_week = _team_week_high(db, league_id)
     high_game = _game_total_high(db, league_id)

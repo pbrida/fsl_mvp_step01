@@ -1,12 +1,13 @@
 # fantasy_stocks/routers/records.py
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from ..db import get_db
 from .. import models
+from ..db import get_db
 
 router = APIRouter(prefix="/records", tags=["records"])
 
@@ -16,11 +17,11 @@ def _team_name(db: Session, team_id: int) -> str:
     return t.name if t else f"Team {team_id}"
 
 
-def _to_float(x: Optional[float]) -> float:
+def _to_float(x: float | None) -> float:
     return 0.0 if x is None else float(x)
 
 
-def _serialize_match(db: Session, m: models.Match) -> Dict[str, Any]:
+def _serialize_match(db: Session, m: models.Match) -> dict[str, Any]:
     return {
         "id": m.id,
         "week": m.week,
@@ -34,7 +35,7 @@ def _serialize_match(db: Session, m: models.Match) -> Dict[str, Any]:
     }
 
 
-def _all_scored_matches(db: Session, league_id: int) -> List[models.Match]:
+def _all_scored_matches(db: Session, league_id: int) -> list[models.Match]:
     return (
         db.query(models.Match)
         .filter(
@@ -47,7 +48,7 @@ def _all_scored_matches(db: Session, league_id: int) -> List[models.Match]:
     )
 
 
-def _all_team_scores(db: Session, league_id: int) -> List[models.TeamScore]:
+def _all_team_scores(db: Session, league_id: int) -> list[models.TeamScore]:
     return (
         db.query(models.TeamScore)
         .filter(models.TeamScore.league_id == league_id)
@@ -56,7 +57,7 @@ def _all_team_scores(db: Session, league_id: int) -> List[models.TeamScore]:
     )
 
 
-def _team_week_high(db: Session, league_id: int) -> Optional[Dict[str, Any]]:
+def _team_week_high(db: Session, league_id: int) -> dict[str, Any] | None:
     rows = _all_team_scores(db, league_id)
     if not rows:
         return None
@@ -69,33 +70,37 @@ def _team_week_high(db: Session, league_id: int) -> Optional[Dict[str, Any]]:
     }
 
 
-def _game_total_high(db: Session, league_id: int) -> Optional[Dict[str, Any]]:
+def _game_total_high(db: Session, league_id: int) -> dict[str, Any] | None:
     matches = _all_scored_matches(db, league_id)
     if not matches:
         return None
+
     def total(m: models.Match) -> float:
         return _to_float(m.home_points) + _to_float(m.away_points)
+
     m = max(matches, key=total)
     out = _serialize_match(db, m)
     out["total_points"] = total(m)
     return out
 
 
-def _blowout_high(db: Session, league_id: int) -> Optional[Dict[str, Any]]:
+def _blowout_high(db: Session, league_id: int) -> dict[str, Any] | None:
     matches = _all_scored_matches(db, league_id)
     if not matches:
         return None
+
     def margin(m: models.Match) -> float:
         return abs(_to_float(m.home_points) - _to_float(m.away_points))
+
     m = max(matches, key=margin)
     out = _serialize_match(db, m)
     out["margin"] = margin(m)
     return out
 
 
-def _narrowest_win(db: Session, league_id: int) -> Optional[Dict[str, Any]]:
+def _narrowest_win(db: Session, league_id: int) -> dict[str, Any] | None:
     matches = _all_scored_matches(db, league_id)
-    wins: List[Tuple[models.Match, float]] = []
+    wins: list[tuple[models.Match, float]] = []
     for m in matches:
         hp = _to_float(m.home_points)
         ap = _to_float(m.away_points)
@@ -109,7 +114,7 @@ def _narrowest_win(db: Session, league_id: int) -> Optional[Dict[str, Any]]:
     return out
 
 
-def _streaks(db: Session, league_id: int) -> Dict[str, Any]:
+def _streaks(db: Session, league_id: int) -> dict[str, Any]:
     """
     Compute longest win streak and longest unbeaten (W/T) streak for each team.
     Also return current streaks.
@@ -119,7 +124,7 @@ def _streaks(db: Session, league_id: int) -> Dict[str, Any]:
         return {"longest_win_streak": None, "longest_unbeaten_streak": None, "current": []}
 
     # Build per-team result timelines in chronological order.
-    timelines: Dict[int, List[str]] = {}
+    timelines: dict[int, list[str]] = {}
     teams = db.query(models.Team).filter(models.Team.league_id == league_id).all()
     for t in teams:
         timelines[t.id] = []
@@ -128,13 +133,16 @@ def _streaks(db: Session, league_id: int) -> Dict[str, Any]:
         hp = _to_float(m.home_points)
         ap = _to_float(m.away_points)
         if hp > ap:
-            timelines[m.home_team_id].append("W"); timelines[m.away_team_id].append("L")
+            timelines[m.home_team_id].append("W")
+            timelines[m.away_team_id].append("L")
         elif ap > hp:
-            timelines[m.home_team_id].append("L"); timelines[m.away_team_id].append("W")
+            timelines[m.home_team_id].append("L")
+            timelines[m.away_team_id].append("W")
         else:
-            timelines[m.home_team_id].append("T"); timelines[m.away_team_id].append("T")
+            timelines[m.home_team_id].append("T")
+            timelines[m.away_team_id].append("T")
 
-    def longest_run(seq: List[str], wanted: set[str]) -> int:
+    def longest_run(seq: list[str], wanted: set[str]) -> int:
         best = cur = 0
         for r in seq:
             if r in wanted:
@@ -145,7 +153,7 @@ def _streaks(db: Session, league_id: int) -> Dict[str, Any]:
                 cur = 0
         return best
 
-    def current_run(seq: List[str]) -> str:
+    def current_run(seq: list[str]) -> str:
         if not seq:
             return ""
         last = seq[-1]
@@ -160,7 +168,7 @@ def _streaks(db: Session, league_id: int) -> Dict[str, Any]:
     # Longest across teams
     lw_best = (None, 0)  # (team_id, length)
     lu_best = (None, 0)
-    current: List[Dict[str, Any]] = []
+    current: list[dict[str, Any]] = []
 
     for tid, seq in timelines.items():
         lw = longest_run(seq, {"W"})
@@ -169,16 +177,30 @@ def _streaks(db: Session, league_id: int) -> Dict[str, Any]:
             lw_best = (tid, lw)
         if lu > lu_best[1]:
             lu_best = (tid, lu)
-        current.append({"team_id": tid, "team_name": _team_name(db, tid), "streak": current_run(seq)})
+        current.append(
+            {"team_id": tid, "team_name": _team_name(db, tid), "streak": current_run(seq)}
+        )
 
-    longest_win = None if lw_best[0] is None else {"team_id": lw_best[0], "team_name": _team_name(db, lw_best[0]), "length": lw_best[1]}
-    longest_unbeaten = None if lu_best[0] is None else {"team_id": lu_best[0], "team_name": _team_name(db, lu_best[0]), "length": lu_best[1]}
+    longest_win = (
+        None
+        if lw_best[0] is None
+        else {"team_id": lw_best[0], "team_name": _team_name(db, lw_best[0]), "length": lw_best[1]}
+    )
+    longest_unbeaten = (
+        None
+        if lu_best[0] is None
+        else {"team_id": lu_best[0], "team_name": _team_name(db, lu_best[0]), "length": lu_best[1]}
+    )
 
-    return {"longest_win_streak": longest_win, "longest_unbeaten_streak": longest_unbeaten, "current": current}
+    return {
+        "longest_win_streak": longest_win,
+        "longest_unbeaten_streak": longest_unbeaten,
+        "current": current,
+    }
 
 
 @router.get("/{league_id}/all")
-def records_all(league_id: int, db: Session = Depends(get_db)) -> Dict[str, Any]:
+def records_all(league_id: int, db: Session = Depends(get_db)) -> dict[str, Any]:
     """
     Aggregate records for a league:
       - team_week_high: best single-week team score

@@ -4,15 +4,41 @@ def test_players_search_and_available_in_league(client):
 
     # Seed some securities
     seed = [
-        {"symbol": "AAPL", "name": "Apple", "is_etf": False, "market_cap": 2_500_000_000_000, "primary_bucket": "LARGE_CAP"},
-        {"symbol": "VTI",  "name": "Vanguard Total Market", "is_etf": True, "market_cap": 300_000_000_000, "primary_bucket": "ETF"},
-        {"symbol": "SHOP", "name": "Shopify", "is_etf": False, "market_cap": 80_000_000_000, "primary_bucket": "SMALL_CAP"},
+        {
+            "symbol": "AAPL",
+            "name": "Apple",
+            "is_etf": False,
+            "market_cap": 2_500_000_000_000,
+            "primary_bucket": "LARGE_CAP",
+        },
+        {
+            "symbol": "VTI",
+            "name": "Vanguard Total Market",
+            "is_etf": True,
+            "market_cap": 300_000_000_000,
+            "primary_bucket": "ETF",
+        },
+        {
+            "symbol": "SHOP",
+            "name": "Shopify",
+            "is_etf": False,
+            "market_cap": 80_000_000_000,
+            "primary_bucket": "SMALL_CAP",
+        },
     ]
     r = client.post("/players/seed", json=seed)
     assert r.status_code == 200, r.text
 
     # Create league + two teams
-    r = client.post("/leagues/", json={"name": "Search League", "roster_slots": 14, "starters": 8, "bucket_requirements": {"X": 8}})
+    r = client.post(
+        "/leagues/",
+        json={
+            "name": "Search League",
+            "roster_slots": 14,
+            "starters": 8,
+            "bucket_requirements": {"X": 8},
+        },
+    )
     assert r.status_code == 200
     league_id = r.json()["id"]
 

@@ -1,9 +1,6 @@
 # fantasy_stocks/services/pricing.py
 from __future__ import annotations
 
-from datetime import date
-from typing import Iterable, Dict
-
 from sqlalchemy.orm import Session
 
 from .. import models

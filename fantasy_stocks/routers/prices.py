@@ -1,9 +1,10 @@
 # fantasy_stocks/routers/prices.py
-from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
-from sqlalchemy.orm import Session
-from typing import List, Optional
-import csv, io
+import csv
+import io
 from datetime import date
+
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from sqlalchemy.orm import Session
 
 from ..db import get_db
 from ..models import Price
@@ -12,7 +13,7 @@ from ..schemas import PriceIn, PriceUpsertResult
 router = APIRouter(prefix="/prices", tags=["prices"])
 
 
-def _upsert_prices(db: Session, rows: List[PriceIn]) -> tuple[int, int]:
+def _upsert_prices(db: Session, rows: list[PriceIn]) -> tuple[int, int]:
     inserted, updated = 0, 0
     for r in rows:
         symbol = r.symbol.upper()
@@ -20,17 +21,15 @@ def _upsert_prices(db: Session, rows: List[PriceIn]) -> tuple[int, int]:
         open_ = r.open
         close_ = r.close
 
-        existing = (
-            db.query(Price)
-            .filter(Price.symbol == symbol, Price.date == d)
-            .one_or_none()
-        )
+        existing = db.query(Price).filter(Price.symbol == symbol, Price.date == d).one_or_none()
         if existing:
             changed = False
             if open_ is not None and existing.open != open_:
-                existing.open = open_; changed = True
+                existing.open = open_
+                changed = True
             if close_ is not None and existing.close != close_:
-                existing.close = close_; changed = True
+                existing.close = close_
+                changed = True
             if changed:
                 updated += 1
         else:
@@ -41,7 +40,7 @@ def _upsert_prices(db: Session, rows: List[PriceIn]) -> tuple[int, int]:
 
 
 @router.post("/bulk", response_model=PriceUpsertResult)
-def bulk_prices(rows: List[PriceIn], db: Session = Depends(get_db)):
+def bulk_prices(rows: list[PriceIn], db: Session = Depends(get_db)):
     # FastAPI/Pydantic will already have validated each item as PriceIn (date is a real date)
     ins, upd = _upsert_prices(db, rows)
     return {"inserted": ins, "updated": upd}
@@ -49,7 +48,7 @@ def bulk_prices(rows: List[PriceIn], db: Session = Depends(get_db)):
 
 @router.post("/csv", response_model=PriceUpsertResult)
 async def upload_prices_csv(file: UploadFile = File(...), db: Session = Depends(get_db)):
-    filename: Optional[str] = getattr(file, "filename", None)
+    filename: str | None = getattr(file, "filename", None)
     if not filename or not filename.lower().endswith(".csv"):
         raise HTTPException(400, "Please upload a .csv file")
 
@@ -67,7 +66,7 @@ async def upload_prices_csv(file: UploadFile = File(...), db: Session = Depends(
     if not required.issubset(header_set):
         raise HTTPException(400, f"CSV must include headers: {sorted(required)}")
 
-    parsed_rows: List[PriceIn] = []
+    parsed_rows: list[PriceIn] = []
     line_no = 1  # account for header row
     for row in reader:
         line_no += 1
@@ -83,9 +82,11 @@ async def upload_prices_csv(file: UploadFile = File(...), db: Session = Depends(
         try:
             d = date.fromisoformat(date_raw)
         except ValueError:
-            raise HTTPException(400, f"Row {line_no}: invalid date '{date_raw}' (expected YYYY-MM-DD)")
+            raise HTTPException(
+                400, f"Row {line_no}: invalid date '{date_raw}' (expected YYYY-MM-DD)"
+            )
 
-        def to_float(s: str) -> Optional[float]:
+        def to_float(s: str) -> float | None:
             if s == "":
                 return None
             try:

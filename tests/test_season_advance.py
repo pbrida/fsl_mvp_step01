@@ -1,17 +1,28 @@
 # tests/test_season_advance.py
 
+
 def test_advance_scores_earliest_unscored_week(client):
     # Create league with 2 teams
-    r = client.post("/leagues/", json={
-        "name": "AdvanceScore",
-        "roster_slots": 14, "starters": 8, "bucket_requirements": {"X": 8}
-    })
+    r = client.post(
+        "/leagues/",
+        json={
+            "name": "AdvanceScore",
+            "roster_slots": 14,
+            "starters": 8,
+            "bucket_requirements": {"X": 8},
+        },
+    )
     assert r.status_code == 200
     league_id = r.json()["id"]
 
     # Join two teams
     for nm in ["A", "B"]:
-        assert client.post(f"/leagues/{league_id}/join", json={"name": nm, "owner": nm}).status_code == 200
+        assert (
+            client.post(
+                f"/leagues/{league_id}/join", json={"name": nm, "owner": nm}
+            ).status_code
+            == 200
+        )
 
     # Generate one week of schedule
     assert client.post(f"/schedule/generate/{league_id}", json={}).status_code == 200
@@ -33,25 +44,55 @@ def test_advance_scores_earliest_unscored_week(client):
 
 def test_advance_generates_playoffs_after_season(client):
     # Seed projections (optional; scoring stub works even with zeros)
-    r = client.post("/players/seed", json=[
-        {"symbol": "AA", "name": "AA", "is_etf": False, "market_cap": 2e11, "primary_bucket": "LARGE_CAP", "proj_points": 10.0},
-        {"symbol": "BB", "name": "BB", "is_etf": False, "market_cap": 2e11, "primary_bucket": "LARGE_CAP", "proj_points": 9.0},
-    ])
+    r = client.post(
+        "/players/seed",
+        json=[
+            {
+                "symbol": "AA",
+                "name": "AA",
+                "is_etf": False,
+                "market_cap": 2e11,
+                "primary_bucket": "LARGE_CAP",
+                "proj_points": 10.0,
+            },
+            {
+                "symbol": "BB",
+                "name": "BB",
+                "is_etf": False,
+                "market_cap": 2e11,
+                "primary_bucket": "LARGE_CAP",
+                "proj_points": 9.0,
+            },
+        ],
+    )
     assert r.status_code == 200
 
     # League with 4 teams
-    r = client.post("/leagues/", json={
-        "name": "AdvancePlayoffs",
-        "roster_slots": 14, "starters": 8, "bucket_requirements": {"X": 8}
-    })
+    r = client.post(
+        "/leagues/",
+        json={
+            "name": "AdvancePlayoffs",
+            "roster_slots": 14,
+            "starters": 8,
+            "bucket_requirements": {"X": 8},
+        },
+    )
     assert r.status_code == 200
     league_id = r.json()["id"]
 
     for nm in ["Alphas", "Betas", "Gammas", "Deltas"]:
-        assert client.post(f"/leagues/{league_id}/join", json={"name": nm, "owner": nm[0]}).status_code == 200
+        assert (
+            client.post(
+                f"/leagues/{league_id}/join", json={"name": nm, "owner": nm[0]}
+            ).status_code
+            == 200
+        )
 
     # Generate a full single round-robin season
-    assert client.post(f"/schedule/season/{league_id}", params={"weeks": 0}).status_code == 200
+    assert (
+        client.post(f"/schedule/season/{league_id}", params={"weeks": 0}).status_code
+        == 200
+    )
 
     # Score the whole season (no unscored weeks remain)
     assert client.post(f"/standings/{league_id}/close_season").status_code == 200

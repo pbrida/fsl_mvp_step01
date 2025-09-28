@@ -1,18 +1,26 @@
 # tests/test_free_agency_autoplace.py
 
+
 def test_free_agency_auto_placement_primary_then_flex_then_bench(client):
     # Create a league (server enforces fixed roster rules)
-    r = client.post("/leagues/", json={
-        "name": "FA Test League",
-        "roster_slots": 14,
-        "starters": 8,
-        "bucket_requirements": {"LARGE_CAP": 8}  # ignored by server, fixed rules apply
-    })
+    r = client.post(
+        "/leagues/",
+        json={
+            "name": "FA Test League",
+            "roster_slots": 14,
+            "starters": 8,
+            "bucket_requirements": {
+                "LARGE_CAP": 8
+            },  # ignored by server, fixed rules apply
+        },
+    )
     assert r.status_code == 200, r.text
     league_id = r.json()["id"]
 
     # Join a team
-    r = client.post(f"/leagues/{league_id}/join", json={"name": "Sharks", "owner": "Sam"})
+    r = client.post(
+        f"/leagues/{league_id}/join", json={"name": "Sharks", "owner": "Sam"}
+    )
     assert r.status_code == 200, r.text
     team_id = r.json()["id"]
 
@@ -24,8 +32,8 @@ def test_free_agency_auto_placement_primary_then_flex_then_bench(client):
                 "league_id": league_id,
                 "team_id": team_id,
                 "player_id": pid,
-                "primary_bucket": bucket
-            }
+                "primary_bucket": bucket,
+            },
         )
 
     # Make 5 LARGE_CAP claims in a row
@@ -41,7 +49,7 @@ def test_free_agency_auto_placement_primary_then_flex_then_bench(client):
     assert len(roster) == 5  # 5 claims -> 5 roster slots
 
     active = [s for s in roster if s["is_active"]]
-    bench  = [s for s in roster if not s["is_active"]]
+    bench = [s for s in roster if not s["is_active"]]
 
     # With fixed rules, after 4 active LC starters (2 primary + 2 FLEX), the 5th must be bench
     assert len(active) == 4

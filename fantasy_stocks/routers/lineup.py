@@ -1,22 +1,20 @@
 # fantasy_stocks/routers/lineup.py
 from __future__ import annotations
 
-from typing import List, Dict
-
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from ..db import get_db
 from .. import models
+from ..db import get_db
 from ..logic.lineup_rules import (
-    validate_starter_buckets,
+    BUCKET_ETF,
     BUCKET_LARGE_CAP,
     BUCKET_MID_CAP,
     BUCKET_SMALL_CAP,
-    BUCKET_ETF,
     FLEX,
     PRIMARY,
+    validate_starter_buckets,
 )
 
 router = APIRouter(prefix="/lineup", tags=["lineup"])
@@ -24,14 +22,14 @@ router = APIRouter(prefix="/lineup", tags=["lineup"])
 
 class SetLineupBody(BaseModel):
     team_id: int = Field(..., ge=1)
-    slot_ids: List[int] = Field(..., min_length=1, description="Exactly 8 slot IDs for starters")
+    slot_ids: list[int] = Field(..., min_length=1, description="Exactly 8 slot IDs for starters")
 
 
 def _upper(s: str | None) -> str:
     return (s or "").strip().upper()
 
 
-def _synthetic_primary_selection_from_slots(buckets: List[str]) -> List[str]:
+def _synthetic_primary_selection_from_slots(buckets: list[str]) -> list[str]:
     """
     Convert selected 8 buckets (some may literally be 'FLEX') into a list of 8 *primary* bucket labels.
     Strategy:
@@ -42,7 +40,7 @@ def _synthetic_primary_selection_from_slots(buckets: List[str]) -> List[str]:
     Result length is always 8 (same as input).
     """
     # Count primaries; collect flex placeholders
-    primaries: List[str] = []
+    primaries: list[str] = []
     flex_placeholders = 0
     for b in buckets:
         bu = _upper(b)
@@ -55,8 +53,8 @@ def _synthetic_primary_selection_from_slots(buckets: List[str]) -> List[str]:
             primaries.append(bu)
 
     # Compute current counts
-    def _count(ls: List[str]) -> Dict[str, int]:
-        d: Dict[str, int] = {}
+    def _count(ls: list[str]) -> dict[str, int]:
+        d: dict[str, int] = {}
         for x in ls:
             d[x] = d.get(x, 0) + 1
         return d
@@ -120,11 +118,7 @@ def set_lineup(body: SetLineupBody, db: Session = Depends(get_db)):
     if len(body.slot_ids) != 8:
         raise HTTPException(status_code=400, detail="Exactly 8 slot_ids are required")
 
-    slots = (
-        db.query(models.RosterSlot)
-        .filter(models.RosterSlot.id.in_(body.slot_ids))
-        .all()
-    )
+    slots = db.query(models.RosterSlot).filter(models.RosterSlot.id.in_(body.slot_ids)).all()
     if len(slots) != len(body.slot_ids):
         raise HTTPException(status_code=400, detail="One or more slot_ids do not exist")
 
@@ -158,17 +152,13 @@ def set_lineup(body: SetLineupBody, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail=detail)
 
     # --- Persist: mark exactly these slots as active (bench all others)
-    team_all_slots = (
-        db.query(models.RosterSlot)
-        .filter(models.RosterSlot.team_id == team.id)
-        .all()
-    )
+    team_all_slots = db.query(models.RosterSlot).filter(models.RosterSlot.team_id == team.id).all()
     selected_set = set(body.slot_ids)
     changed = False
     for s in team_all_slots:
         new_active = s.id in selected_set
         if getattr(s, "is_active", False) != new_active:
-            setattr(s, "is_active", new_active)
+            s.is_active = new_active
             changed = True
 
     if changed:

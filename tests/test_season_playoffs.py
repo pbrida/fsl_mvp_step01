@@ -1,16 +1,26 @@
 # tests/test_season_playoffs.py
 
+
 def test_season_and_playoffs_flow(client):
     # 1) Create league with 4 teams
-    r = client.post("/leagues/", json={
-        "name": "SeasonLeague",
-        "roster_slots": 14,
-        "starters": 8,
-        "bucket_requirements": {
-            "LARGE_CAP": 1, "MID_CAP": 1, "SMALL_CAP": 1, "ETF": 1,
-            "DIVIDEND": 1, "TECH": 1, "INTERNATIONAL": 1, "WILDCARD": 1
+    r = client.post(
+        "/leagues/",
+        json={
+            "name": "SeasonLeague",
+            "roster_slots": 14,
+            "starters": 8,
+            "bucket_requirements": {
+                "LARGE_CAP": 1,
+                "MID_CAP": 1,
+                "SMALL_CAP": 1,
+                "ETF": 1,
+                "DIVIDEND": 1,
+                "TECH": 1,
+                "INTERNATIONAL": 1,
+                "WILDCARD": 1,
+            },
         },
-    })
+    )
     assert r.status_code == 200, r.text
     league_id = r.json()["id"]
 
@@ -18,7 +28,9 @@ def test_season_and_playoffs_flow(client):
     names = [("Alphas", "A"), ("Betas", "B"), ("Gammas", "C"), ("Deltas", "D")]
     team_ids = []
     for name, owner in names:
-        rr = client.post(f"/leagues/{league_id}/join", json={"name": name, "owner": owner})
+        rr = client.post(
+            f"/leagues/{league_id}/join", json={"name": name, "owner": owner}
+        )
         assert rr.status_code == 200, rr.text
         team_ids.append(rr.json()["id"])
     assert len(team_ids) == 4

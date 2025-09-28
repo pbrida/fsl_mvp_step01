@@ -1,9 +1,10 @@
 # fantasy_stocks/utils/idempotency.py
-import os
-import inspect
 import hashlib
+import inspect
+import os
 from functools import wraps
-from fastapi import Request, HTTPException
+
+from fastapi import HTTPException, Request
 
 # Simple in-memory store (per-process). Fine for dev/tests.
 _idempotency_store = {}
@@ -38,6 +39,7 @@ def with_idempotency(key_prefix: str):
     Cache key includes the header AND a fingerprint of the request
     (method+path+query+body), so different leagues/paths don’t collide.
     """
+
     def decorator(func):
         @wraps(func)
         async def wrapper(*args, **kwargs):
@@ -79,4 +81,5 @@ def with_idempotency(key_prefix: str):
             return result
 
         return wrapper
+
     return decorator

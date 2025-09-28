@@ -1,6 +1,5 @@
 # fantasy_stocks/logic/lineup_rules.py
 from __future__ import annotations
-from typing import Dict, List, Tuple
 
 BUCKET_LARGE_CAP = "LARGE_CAP"
 BUCKET_MID_CAP = "MID_CAP"
@@ -11,7 +10,7 @@ FLEX = "FLEX"
 PRIMARY = [BUCKET_LARGE_CAP, BUCKET_MID_CAP, BUCKET_SMALL_CAP, BUCKET_ETF]
 FLEX_ELIGIBLE = set(PRIMARY)
 
-REQUIRED: Dict[str, int] = {
+REQUIRED: dict[str, int] = {
     BUCKET_LARGE_CAP: 2,
     BUCKET_MID_CAP: 1,
     BUCKET_SMALL_CAP: 2,
@@ -22,25 +21,26 @@ REQUIRED: Dict[str, int] = {
 STARTERS_TOTAL = sum(v for k, v in REQUIRED.items() if k != FLEX) + REQUIRED[FLEX]
 
 
-def _count(buckets: List[str]) -> Dict[str, int]:
-    out: Dict[str, int] = {}
+def _count(buckets: list[str]) -> dict[str, int]:
+    out: dict[str, int] = {}
     for b in buckets:
         out[b] = out.get(b, 0) + 1
     return out
 
 
-def validate_starter_buckets(selected_buckets: List[str]) -> Tuple[bool, Dict]:
+def validate_starter_buckets(selected_buckets: list[str]) -> tuple[bool, dict]:
     """
     Validates an 8-slot starter set against fixed rules, treating FLEX as a wildcard.
     - selected_buckets: list of primary bucket labels for the 8 starters.
       You do NOT need to include 'FLEX' in this list; FLEX is derived from surplus.
     Returns: (ok, detail)
     """
-    detail: Dict = {"required": REQUIRED.copy(), "counts": {}, "explain": {}}
+    detail: dict = {"required": REQUIRED.copy(), "counts": {}, "explain": {}}
 
     if len(selected_buckets) != STARTERS_TOTAL:
         detail["explain"]["wrong_starter_count"] = {
-            "need": STARTERS_TOTAL, "got": len(selected_buckets)
+            "need": STARTERS_TOTAL,
+            "got": len(selected_buckets),
         }
         return False, detail
 
@@ -48,7 +48,7 @@ def validate_starter_buckets(selected_buckets: List[str]) -> Tuple[bool, Dict]:
     detail["counts"] = counts
 
     # 1) Satisfy primaries
-    deficits: Dict[str, Dict[str, int]] = {}
+    deficits: dict[str, dict[str, int]] = {}
     surplus_pool = 0
     for k in PRIMARY:
         need = REQUIRED[k]
@@ -56,7 +56,7 @@ def validate_starter_buckets(selected_buckets: List[str]) -> Tuple[bool, Dict]:
         if got < need:
             deficits[k] = {"need": need, "got": got, "missing": need - got}
         else:
-            surplus_pool += (got - need)
+            surplus_pool += got - need
 
     # 2) Use surplus to fill FLEX
     flex_needed = REQUIRED[FLEX]
@@ -67,7 +67,7 @@ def validate_starter_buckets(selected_buckets: List[str]) -> Tuple[bool, Dict]:
             got = counts.get(k, 0)
             need = REQUIRED[k]
             if got > need and k in FLEX_ELIGIBLE:
-                eligible_surplus += (got - need)
+                eligible_surplus += got - need
 
         # Also, if we didn't meet some primaries, try to borrow from OTHER primaries for FLEX? No.
         # FLEX must be filled AFTER primaries are satisfied; so only true surplus counts.

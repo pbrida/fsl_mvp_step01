@@ -1,25 +1,26 @@
 # fantasy_stocks/routers/schedule.py
 from __future__ import annotations
 
-from typing import List, Dict, Any, Tuple
+from typing import Any
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from ..db import get_db
 from .. import models
+from ..db import get_db
 from ..services.periods import current_week_label
 
 # NOTE: This keeps your original prefix & tag so existing tests keep passing.
 route = APIRouter(prefix="/schedule", tags=["schedule"])
 
 
-def _pair_round(team_ids: List[int]) -> List[Tuple[int, int]]:
+def _pair_round(team_ids: list[int]) -> list[tuple[int, int]]:
     """
     Pair teams in order (1v2, 3v4, ...) for a single round.
     Assumes an even list; caller handles odd cases (bye).
     Home/away assignment is done by caller.
     """
-    pairs: List[Tuple[int, int]] = []
+    pairs: list[tuple[int, int]] = []
     for i in range(0, len(team_ids), 2):
         a = team_ids[i]
         b = team_ids[i + 1]
@@ -28,7 +29,7 @@ def _pair_round(team_ids: List[int]) -> List[Tuple[int, int]]:
 
 
 @route.post("/generate/{league_id}")
-def generate_week(league_id: int, db: Session = Depends(get_db)) -> Dict[str, Any]:
+def generate_week(league_id: int, db: Session = Depends(get_db)) -> dict[str, Any]:
     """
     ORIGINAL single-week generator that your existing tests call.
     Creates matchups for the CURRENT ISO week label (no duplicates if already exists).
@@ -81,7 +82,9 @@ def generate_week(league_id: int, db: Session = Depends(get_db)) -> Dict[str, An
 
 
 @route.post("/season/{league_id}")
-def generate_season(league_id: int, weeks: int = 0, db: Session = Depends(get_db)) -> Dict[str, Any]:
+def generate_season(
+    league_id: int, weeks: int = 0, db: Session = Depends(get_db)
+) -> dict[str, Any]:
     """
     Generate a season schedule using the "circle method" round-robin.
     - If weeks <= 0: generate a single round-robin (n-1 rounds).
@@ -120,7 +123,7 @@ def generate_season(league_id: int, weeks: int = 0, db: Session = Depends(get_db
     arr = ids[:]
     for rnd in range(rounds):
         # Create pairs for this round
-        pairs: List[Tuple[int, int]] = []
+        pairs: list[tuple[int, int]] = []
         for i in range(n // 2):
             a = arr[i]
             b = arr[-(i + 1)]
@@ -142,7 +145,9 @@ def generate_season(league_id: int, weeks: int = 0, db: Session = Depends(get_db
         )
         if existing == 0:
             for h, a in pairs:
-                m = models.Match(league_id=league_id, week=week_label, home_team_id=h, away_team_id=a)
+                m = models.Match(
+                    league_id=league_id, week=week_label, home_team_id=h, away_team_id=a
+                )
                 db.add(m)
                 created_matches += 1
             if pairs:
@@ -160,15 +165,10 @@ def generate_season(league_id: int, weeks: int = 0, db: Session = Depends(get_db
 
 
 @route.get("/{league_id}/weeks")
-def list_weeks(league_id: int, db: Session = Depends(get_db)) -> List[str]:
+def list_weeks(league_id: int, db: Session = Depends(get_db)) -> list[str]:
     """
     List distinct week labels for a league in ascending order.
     Includes both normal weeks and playoff/season labels.
     """
-    weeks = (
-        db.query(models.Match.week)
-        .filter(models.Match.league_id == league_id)
-        .distinct()
-        .all()
-    )
+    weeks = db.query(models.Match.week).filter(models.Match.league_id == league_id).distinct().all()
     return sorted([w[0] for w in weeks])

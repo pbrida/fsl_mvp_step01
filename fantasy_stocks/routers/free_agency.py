@@ -1,15 +1,15 @@
 # fantasy_stocks/routers/free_agency.py
 from __future__ import annotations
 
-from typing import List, Optional, Dict, Any
+from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Path
+from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session
 from sqlalchemy import or_, select  # <- use select
+from sqlalchemy.orm import Session
 
-from ..db import get_db
 from .. import models
+from ..db import get_db
 from ..logic.auto_placement import auto_place_new_slot
 from ..logic.ticker_registry import resolve_bucket_db_first
 
@@ -19,18 +19,18 @@ router = APIRouter(prefix="/free-agency", tags=["free_agency"])
 class FreeAgentPlayer(BaseModel):
     player_id: int
     name: str
-    ticker: Optional[str] = None
-    bucket: Optional[str] = None
-    meta: Dict[str, Any] = Field(default_factory=dict)
+    ticker: str | None = None
+    bucket: str | None = None
+    meta: dict[str, Any] = Field(default_factory=dict)
 
 
 class ClaimRequest(BaseModel):
     league_id: int
     team_id: int
     player_id: int
-    ticker: Optional[str] = None          # prefer real ticker if available
-    primary_bucket: Optional[str] = None  # compatibility path
-    bid_amount: Optional[float] = None
+    ticker: str | None = None  # prefer real ticker if available
+    primary_bucket: str | None = None  # compatibility path
+    bid_amount: float | None = None
 
 
 class DropRequest(BaseModel):
@@ -43,18 +43,18 @@ class AddRequest(BaseModel):
     league_id: int
     team_id: int
     player_id: int
-    ticker: Optional[str] = None
-    primary_bucket: Optional[str] = None
+    ticker: str | None = None
+    primary_bucket: str | None = None
     override_waivers: bool = False
 
 
-@router.get("/{league_id}/players", response_model=List[FreeAgentPlayer])
+@router.get("/{league_id}/players", response_model=list[FreeAgentPlayer])
 def list_free_agents(
     league_id: int = Path(..., ge=1),
-    q: Optional[str] = Query(None, description="Search by name/symbol"),
-    bucket: Optional[str] = Query(None, description="Filter by primary bucket (e.g., ETF)"),
-    sort: Optional[str] = Query(None, description="symbol|market_cap|adp|proj_points"),
-    order: Optional[str] = Query(None, description="asc|desc"),
+    q: str | None = Query(None, description="Search by name/symbol"),
+    bucket: str | None = Query(None, description="Filter by primary bucket (e.g., ETF)"),
+    sort: str | None = Query(None, description="symbol|market_cap|adp|proj_points"),
+    order: str | None = Query(None, description="asc|desc"),
     limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
 ):
@@ -96,7 +96,7 @@ def list_free_agents(
 
     rows = query.limit(limit).all()
 
-    out: List[FreeAgentPlayer] = []
+    out: list[FreeAgentPlayer] = []
     pid = 1
     for r in rows:
         out.append(
@@ -138,14 +138,18 @@ def claim_player(
         symbol = f"PID{body.player_id}"
         resolved = (body.primary_bucket or "").strip().upper() or None
 
-    slot = models.RosterSlot(team_id=team.id, symbol=symbol, bucket=resolved or None, is_active=False)
+    slot = models.RosterSlot(
+        team_id=team.id, symbol=symbol, bucket=resolved or None, is_active=False
+    )
     db.add(slot)
     db.commit()
     db.refresh(slot)
 
     placement = None
     if resolved:
-        placement = auto_place_new_slot(db, team_id=team.id, slot_id=slot.id, primary_bucket=resolved)
+        placement = auto_place_new_slot(
+            db, team_id=team.id, slot_id=slot.id, primary_bucket=resolved
+        )
 
     return {
         "ok": True,
@@ -154,7 +158,11 @@ def claim_player(
         "slot_id": slot.id,
         "symbol": symbol,
         "bucket_resolved": bool(resolved),
-        "hint": (None if resolved else "No mapping for this ticker; slot left inactive until bucket is set."),
+        "hint": (
+            None
+            if resolved
+            else "No mapping for this ticker; slot left inactive until bucket is set."
+        ),
     }
 
 
@@ -178,14 +186,18 @@ def add_player_immediate(
         symbol = f"PID{body.player_id}"
         resolved = (body.primary_bucket or "").strip().upper() or None
 
-    slot = models.RosterSlot(team_id=team.id, symbol=symbol, bucket=resolved or None, is_active=False)
+    slot = models.RosterSlot(
+        team_id=team.id, symbol=symbol, bucket=resolved or None, is_active=False
+    )
     db.add(slot)
     db.commit()
     db.refresh(slot)
 
     placement = None
     if resolved:
-        placement = auto_place_new_slot(db, team_id=team.id, slot_id=slot.id, primary_bucket=resolved)
+        placement = auto_place_new_slot(
+            db, team_id=team.id, slot_id=slot.id, primary_bucket=resolved
+        )
 
     return {
         "ok": True,
@@ -194,7 +206,11 @@ def add_player_immediate(
         "slot_id": slot.id,
         "symbol": symbol,
         "bucket_resolved": bool(resolved),
-        "hint": (None if resolved else "No mapping for this ticker; slot left inactive until bucket is set."),
+        "hint": (
+            None
+            if resolved
+            else "No mapping for this ticker; slot left inactive until bucket is set."
+        ),
     }
 
 
@@ -213,7 +229,10 @@ def drop_player(
 
     slot = (
         db.query(models.RosterSlot)
-        .filter(models.RosterSlot.team_id == team.id, models.RosterSlot.symbol == body.symbol.strip().upper())
+        .filter(
+            models.RosterSlot.team_id == team.id,
+            models.RosterSlot.symbol == body.symbol.strip().upper(),
+        )
         .first()
     )
     if not slot:
@@ -222,4 +241,8 @@ def drop_player(
     db.delete(slot)
     db.commit()
 
-    return {"ok": True, "message": "Player dropped to free agency.", "symbol": body.symbol.strip().upper()}
+    return {
+        "ok": True,
+        "message": "Player dropped to free agency.",
+        "symbol": body.symbol.strip().upper(),
+    }

@@ -1,19 +1,18 @@
 # fantasy_stocks/routers/standings.py
 from __future__ import annotations
 
-from typing import List, Dict, TypedDict, Optional, Set, Tuple
-from collections import defaultdict
 import hashlib
+from collections import defaultdict
+from typing import TypedDict
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
-from ..db import get_db
 from .. import models, schemas
+from ..db import get_db
 from ..services.periods import current_week_label
-from ..utils.num import to_float
 from ..utils.idempotency import with_idempotency
-
+from ..utils.num import to_float
 
 route = APIRouter(prefix="/standings", tags=["standings"])
 
@@ -33,7 +32,7 @@ def _sum_active_proj_points(db: Session, team_id: int) -> float:
         return total
     symbols = [s.symbol for s in slots]
     # fetch all securities once
-    sec_map: Dict[str, models.Security] = {
+    sec_map: dict[str, models.Security] = {
         s.symbol: s
         for s in db.query(models.Security).filter(models.Security.symbol.in_(symbols)).all()
     }
@@ -44,7 +43,9 @@ def _sum_active_proj_points(db: Session, team_id: int) -> float:
     return total
 
 
-def _score_league_for_period(db: Session, league: models.League, period: str) -> List[schemas.ScoreOut]:
+def _score_league_for_period(
+    db: Session, league: models.League, period: str
+) -> list[schemas.ScoreOut]:
     """
     Score all matches for a league in a given ISO week `period` using PROJECTIONS stub:
     points = sum of proj_points for active starters.
@@ -59,7 +60,7 @@ def _score_league_for_period(db: Session, league: models.League, period: str) ->
         .all()
     )
 
-    out: List[schemas.ScoreOut] = []
+    out: list[schemas.ScoreOut] = []
     if not matches:
         return out
 
@@ -94,9 +95,7 @@ def _score_league_for_period(db: Session, league: models.League, period: str) ->
             if ts:
                 ts.points = pts
             else:
-                ts = models.TeamScore(
-                    league_id=league.id, team_id=tid, period=period, points=pts
-                )
+                ts = models.TeamScore(league_id=league.id, team_id=tid, period=period, points=pts)
                 db.add(ts)
 
         # accumulate response with safe team-name fallback
@@ -105,19 +104,26 @@ def _score_league_for_period(db: Session, league: models.League, period: str) ->
         home_name = home_team.name if home_team else f"Team {m.home_team_id}"
         away_name = away_team.name if away_team else f"Team {m.away_team_id}"
 
-        out.append(schemas.ScoreOut(team_id=m.home_team_id, team_name=home_name, period=period, points=home_pts))
-        out.append(schemas.ScoreOut(team_id=m.away_team_id, team_name=away_name, period=period, points=away_pts))
+        out.append(
+            schemas.ScoreOut(
+                team_id=m.home_team_id, team_name=home_name, period=period, points=home_pts
+            )
+        )
+        out.append(
+            schemas.ScoreOut(
+                team_id=m.away_team_id, team_name=away_name, period=period, points=away_pts
+            )
+        )
 
     db.commit()
     return out
 
 
 @route.post("/{league_id}/close_week", operation_id="standings_close_week")
-
-@with_idempotency("close_week_v1")   # 👈 idempotency decorator
+@with_idempotency("close_week_v1")  # 👈 idempotency decorator
 async def close_week(
     league_id: int,
-    request: Request,                 # 👈 now a real type, not a forward ref
+    request: Request,  # 👈 now a real type, not a forward ref
     db: Session = Depends(get_db),
 ):
     """
@@ -136,15 +142,15 @@ async def close_week(
     matches_scored = len(results) // 2
 
     # Build totals dict the tests expect (team_id -> points for the week)
-    totals: Dict[int, float] = {}
+    totals: dict[int, float] = {}
     for r in results:
         totals[r.team_id] = float(r.points)
 
     return {"ok": True, "week": week, "matches_scored": matches_scored, "totals": totals}
 
-@route.post("/{league_id}/close_season", operation_id="standings_close_season")
 
-@with_idempotency("close_season_v1")   # 👈 idempotency decorator
+@route.post("/{league_id}/close_season", operation_id="standings_close_season")
+@with_idempotency("close_season_v1")  # 👈 idempotency decorator
 async def close_season(
     league_id: int,
     request: Request,
@@ -160,12 +166,7 @@ async def close_season(
         raise HTTPException(status_code=404, detail="League not found")
 
     # distinct weeks that have matches
-    weeks = (
-        db.query(models.Match.week)
-        .filter(models.Match.league_id == league_id)
-        .distinct()
-        .all()
-    )
+    weeks = db.query(models.Match.week).filter(models.Match.league_id == league_id).distinct().all()
     weeks = [w[0] for w in weeks]
     total_matches_scored = 0
 
@@ -208,7 +209,7 @@ class _StatRow(TypedDict):
     points_against: float
 
 
-def _aggregate_table_rows(db: Session, league_id: int) -> List[schemas.TableRow]:
+def _aggregate_table_rows(db: Session, league_id: int) -> list[schemas.TableRow]:
     league = db.get(models.League, league_id)
     if not league:
         raise HTTPException(status_code=404, detail="League not found")
@@ -217,7 +218,7 @@ def _aggregate_table_rows(db: Session, league_id: int) -> List[schemas.TableRow]
     if not teams:
         return []
 
-    stat: Dict[int, _StatRow] = {
+    stat: dict[int, _StatRow] = {
         t.id: _StatRow(
             team_id=t.id,
             team_name=t.name,
@@ -266,7 +267,7 @@ def _aggregate_table_rows(db: Session, league_id: int) -> List[schemas.TableRow]
             h["ties"] += 1
             a["ties"] += 1
 
-    table: List[schemas.TableRow] = []
+    table: list[schemas.TableRow] = []
     for t in teams:
         row = stat[t.id]
         gp = int(row["games_played"])
@@ -297,7 +298,6 @@ def _aggregate_table_rows(db: Session, league_id: int) -> List[schemas.TableRow]
 
 
 @route.get("/{league_id}", operation_id="standings_get")
-
 def get_standings(league_id: int, persist: bool = False, db: Session = Depends(get_db)):
     """
     Two behaviors (to satisfy tests):
@@ -351,7 +351,6 @@ def get_standings(league_id: int, persist: bool = False, db: Session = Depends(g
 
 
 @route.get("/{league_id}/table", operation_id="standings_table")
-
 def standings_table(league_id: int, db: Session = Depends(get_db)):
     """
     Return a PLAIN LIST of aggregate table rows (not wrapped), i.e.:
@@ -367,7 +366,6 @@ def standings_table(league_id: int, db: Session = Depends(get_db)):
 
 
 @route.get("/{league_id}/history", operation_id="standings_history")
-
 def standings_history(league_id: int, db: Session = Depends(get_db)):
     """
     Return per-team weekly scoring snapshots from TeamScore.
@@ -402,8 +400,9 @@ def standings_history(league_id: int, db: Session = Depends(get_db)):
 
 # --- Power Rankings helpers (Pythagorean expectation) ----------------------------
 
-def _pf_pa_by_team(db: Session, league_id: int) -> Dict[int, Dict[str, float]]:
-    out: Dict[int, Dict[str, float]] = {}
+
+def _pf_pa_by_team(db: Session, league_id: int) -> dict[int, dict[str, float]]:
+    out: dict[int, dict[str, float]] = {}
     matches = (
         db.query(models.Match)
         .filter(
@@ -432,12 +431,13 @@ def _pythag_expectation(pf: float, pa: float, exponent: float = 2.0) -> float:
     """
     if pf <= 0 and pa <= 0:
         return 0.5
-    return (pf ** exponent) / ((pf ** exponent) + (pa ** exponent))
+    return (pf**exponent) / ((pf**exponent) + (pa**exponent))
 
 
 # --- Tiebreakers v1 --------------------------------------------------------------
 
-def _scored_matches_for_league(db: Session, league_id: int) -> List[models.Match]:
+
+def _scored_matches_for_league(db: Session, league_id: int) -> list[models.Match]:
     return (
         db.query(models.Match)
         .filter(
@@ -449,10 +449,9 @@ def _scored_matches_for_league(db: Session, league_id: int) -> List[models.Match
     )
 
 
-def _h2h_stats_among(db: Session, league_id: int, group: Set[int]) -> Dict[int, Dict[str, float]]:
-    stats: Dict[int, Dict[str, float]] = {
-        tid: {"wins": 0.0, "losses": 0.0, "ties": 0.0, "pf": 0.0, "pa": 0.0}
-        for tid in group
+def _h2h_stats_among(db: Session, league_id: int, group: set[int]) -> dict[int, dict[str, float]]:
+    stats: dict[int, dict[str, float]] = {
+        tid: {"wins": 0.0, "losses": 0.0, "ties": 0.0, "pf": 0.0, "pa": 0.0} for tid in group
     }
     for m in _scored_matches_for_league(db, league_id):
         a, b = m.home_team_id, m.away_team_id
@@ -474,21 +473,21 @@ def _h2h_stats_among(db: Session, league_id: int, group: Set[int]) -> Dict[int, 
                 stats[b]["ties"] += 1.0
     return stats
 
+
 def _deterministic_coin(league_id: int, team_id: int) -> float:
     """
     Stable tie-break shard in [0,1): hash(league_id, team_id) -> float.
     Ensures fully deterministic ordering across runs.
     """
-    h = hashlib.sha1(f"{league_id}:{team_id}".encode("utf-8")).hexdigest()
+    h = hashlib.sha1(f"{league_id}:{team_id}".encode()).hexdigest()
     # use first 8 hex chars -> int -> normalize
     return int(h[:8], 16) / 0xFFFFFFFF
 
 
 @route.get("/{league_id}/tiebreakers", operation_id="standings_tiebreakers")
-
 def tiebreakers(
     league_id: int,
-    team_ids: Optional[str] = None,
+    team_ids: str | None = None,
     db: Session = Depends(get_db),
 ):
     """
@@ -510,16 +509,18 @@ def tiebreakers(
         raise HTTPException(status_code=404, detail="League not found")
 
     # Base table (overall metrics)
-    base = _aggregate_table_rows(db, league_id)  # List[schemas.TableRow], computed from scored matches
+    base = _aggregate_table_rows(
+        db, league_id
+    )  # List[schemas.TableRow], computed from scored matches
     if team_ids:
-        want: Set[int] = {int(x) for x in team_ids.split(",") if x.strip()}
+        want: set[int] = {int(x) for x in team_ids.split(",") if x.strip()}
         base = [r for r in base if r.team_id in want]
 
-    group_ids: Set[int] = {r.team_id for r in base}
+    group_ids: set[int] = {r.team_id for r in base}
     # Mini-league head-to-head stats only among the considered group
     h2h = _h2h_stats_among(db, league_id, group_ids)
 
-    def key_for(row: schemas.TableRow) -> Tuple:
+    def key_for(row: schemas.TableRow) -> tuple:
         # overall
         win_pct = float(row.win_pct or 0.0)
         diff = float(row.point_diff or 0.0)
@@ -541,21 +542,24 @@ def tiebreakers(
         hs = h2h.get(r.team_id, {"wins": 0.0, "losses": 0.0, "ties": 0.0})
         g = hs["wins"] + hs["losses"] + hs["ties"]
         h2h_win_pct = (hs["wins"] + 0.5 * hs["ties"]) / g if g > 0 else 0.0
-        out.append({
-            "team_id": r.team_id,
-            "team_name": r.team_name,
-            "win_pct": float(r.win_pct),
-            "h2h_win_pct": h2h_win_pct,
-            "point_diff": float(r.point_diff),
-            "points_for": float(r.points_for),
-            "reason": "Sorted by win_pct → h2h_win_pct → point_diff → points_for → coin",
-        })
+        out.append(
+            {
+                "team_id": r.team_id,
+                "team_name": r.team_name,
+                "win_pct": float(r.win_pct),
+                "h2h_win_pct": h2h_win_pct,
+                "point_diff": float(r.point_diff),
+                "points_for": float(r.points_for),
+                "reason": "Sorted by win_pct → h2h_win_pct → point_diff → points_for → coin",
+            }
+        )
     return out
 
 
 # --- Power Rankings+: SOS, streaks, last-5 --------------------------------------
 
-def _scored_matches(db: Session, league_id: int) -> List[models.Match]:
+
+def _scored_matches(db: Session, league_id: int) -> list[models.Match]:
     return (
         db.query(models.Match)
         .filter(
@@ -568,9 +572,9 @@ def _scored_matches(db: Session, league_id: int) -> List[models.Match]:
     )
 
 
-def _pf_pa_per_team(db: Session, league_id: int) -> Dict[int, Dict[str, float]]:
+def _pf_pa_per_team(db: Session, league_id: int) -> dict[int, dict[str, float]]:
     # PF/PA across all scored matches (overall totals and games played)
-    out: Dict[int, Dict[str, float]] = defaultdict(lambda: {"pf": 0.0, "pa": 0.0, "gp": 0})
+    out: dict[int, dict[str, float]] = defaultdict(lambda: {"pf": 0.0, "pa": 0.0, "gp": 0})
     for m in _scored_matches(db, league_id):
         hp = float(m.home_points or 0.0)
         ap = float(m.away_points or 0.0)
@@ -583,7 +587,7 @@ def _pf_pa_per_team(db: Session, league_id: int) -> Dict[int, Dict[str, float]]:
     return out
 
 
-def _sos_by_team(db: Session, league_id: int) -> Dict[int, float]:
+def _sos_by_team(db: Session, league_id: int) -> dict[int, float]:
     """
     SOS = average of opponents' PF-per-game (season-wide), across games played so far.
     (Deterministic and schema-free.)
@@ -591,13 +595,13 @@ def _sos_by_team(db: Session, league_id: int) -> Dict[int, float]:
     pfpa = _pf_pa_per_team(db, league_id)
     matches = _scored_matches(db, league_id)
     # Precompute PF/game for every team
-    opp_pfpg: Dict[int, float] = {}
+    opp_pfpg: dict[int, float] = {}
     for tid, rec in pfpa.items():
         gp = rec["gp"] or 1
         opp_pfpg[tid] = rec["pf"] / gp
 
-    sos: Dict[int, float] = defaultdict(float)
-    counts: Dict[int, int] = defaultdict(int)
+    sos: dict[int, float] = defaultdict(float)
+    counts: dict[int, int] = defaultdict(int)
     for m in matches:
         a, b = m.home_team_id, m.away_team_id
         sos[a] += opp_pfpg.get(b, 0.0)
@@ -610,8 +614,8 @@ def _sos_by_team(db: Session, league_id: int) -> Dict[int, float]:
     return sos
 
 
-def _results_timeline(db: Session, league_id: int) -> Dict[int, List[str]]:
-    out: Dict[int, List[str]] = defaultdict(list)
+def _results_timeline(db: Session, league_id: int) -> dict[int, list[str]]:
+    out: dict[int, list[str]] = defaultdict(list)
     for m in _scored_matches(db, league_id):
         hp = to_float(m.home_points)
         ap = to_float(m.away_points)
@@ -626,7 +630,8 @@ def _results_timeline(db: Session, league_id: int) -> Dict[int, List[str]]:
             out[m.away_team_id].append("T")
     return out
 
-def _streak_from(results: List[str]) -> str:
+
+def _streak_from(results: list[str]) -> str:
     """
     Compute current streak string like 'W3','L2','T1'. Empty => ''.
     """
@@ -642,7 +647,7 @@ def _streak_from(results: List[str]) -> str:
     return f"{last}{n}"
 
 
-def _last5_from(results: List[str]) -> str:
+def _last5_from(results: list[str]) -> str:
     """
     Return 'W-L-T' counts for the last 5 (or fewer) results, e.g., '3-1-1'.
     """
@@ -656,7 +661,6 @@ def _last5_from(results: List[str]) -> str:
 
 
 @route.get("/{league_id}/power_rankings", operation_id="standings_power_rankings")
-
 def power_rankings(league_id: int, db: Session = Depends(get_db)):
     """
     Power Rankings using Pythagorean expectation, augmented with:
@@ -686,23 +690,27 @@ def power_rankings(league_id: int, db: Session = Depends(get_db)):
         streak = _streak_from(timelines.get(tid, []))
         last5 = _last5_from(timelines.get(tid, []))
         sos = float(sos_map.get(tid, 0.0))
-        rows.append({
-            "team_id": tid,
-            "team_name": tname,
-            "pf": pf,
-            "pa": pa,
-            "pr": pr,
-            "sos": sos,
-            "streak": streak,
-            "last5": last5,
-        })
+        rows.append(
+            {
+                "team_id": tid,
+                "team_name": tname,
+                "pf": pf,
+                "pa": pa,
+                "pr": pr,
+                "sos": sos,
+                "streak": streak,
+                "last5": last5,
+            }
+        )
 
     rows.sort(key=lambda r: r["pr"], reverse=True)
     return rows
+
+
 # --- League Insights -------------------------------------------------------------
 
-@route.get("/{league_id}/insights", operation_id="standings_insights")
 
+@route.get("/{league_id}/insights", operation_id="standings_insights")
 def standings_insights(league_id: int, db: Session = Depends(get_db)):
     """
     Read-only league insights that combine multiple analytics:
@@ -750,8 +758,14 @@ def standings_insights(league_id: int, db: Session = Depends(get_db)):
 
     # --- SOS + rank
     sos_map = _sos_by_team(db, league_id)
-    sos_rows = [{"team_id": tid, "team_name": name_by_id.get(tid, f"Team {tid}"), "sos": float(sos_map.get(tid, 0.0))}
-                for tid in name_by_id.keys()]
+    sos_rows = [
+        {
+            "team_id": tid,
+            "team_name": name_by_id.get(tid, f"Team {tid}"),
+            "sos": float(sos_map.get(tid, 0.0)),
+        }
+        for tid in name_by_id.keys()
+    ]
     sos_rows.sort(key=lambda r: r["sos"], reverse=True)
     for i, r in enumerate(sos_rows, start=1):
         r["rank_sos"] = i
@@ -761,19 +775,17 @@ def standings_insights(league_id: int, db: Session = Depends(get_db)):
     streak_rows = []
     for tid, tname in name_by_id.items():
         res = timelines.get(tid, [])
-        streak_rows.append({
-            "team_id": tid,
-            "team_name": tname,
-            "streak": _streak_from(res),
-            "last5": _last5_from(res),
-        })
+        streak_rows.append(
+            {
+                "team_id": tid,
+                "team_name": tname,
+                "streak": _streak_from(res),
+                "last5": _last5_from(res),
+            }
+        )
 
     # --- Highs: best / worst TeamScore weeks
-    tscores = (
-        db.query(models.TeamScore)
-        .filter(models.TeamScore.league_id == league_id)
-        .all()
-    )
+    tscores = db.query(models.TeamScore).filter(models.TeamScore.league_id == league_id).all()
 
     best_week = None
     worst_week = None
@@ -797,6 +809,7 @@ def standings_insights(league_id: int, db: Session = Depends(get_db)):
     matches = _scored_matches(db, league_id)
     blow = None
     if matches:
+
         def _margin(m: models.Match) -> float:
             hp = float(m.home_points or 0.0)
             ap = float(m.away_points or 0.0)
@@ -833,10 +846,12 @@ def standings_insights(league_id: int, db: Session = Depends(get_db)):
             "biggest_blowout": blow,
         },
     }
+
+
 # --- Elo Rankings ---------------------------------------------------------------
 
-@route.get("/{league_id}/elo", operation_id="standings_elo")
 
+@route.get("/{league_id}/elo", operation_id="standings_elo")
 def elo_rankings(league_id: int, k: float = 32.0, db: Session = Depends(get_db)):
     """
     Compute Elo ratings from scored matches only (no persistence).
@@ -853,8 +868,10 @@ def elo_rankings(league_id: int, k: float = 32.0, db: Session = Depends(get_db))
     name_by_id = {t.id: t.name for t in teams}
 
     # Start ratings & simple records
-    rating: Dict[int, float] = {tid: 1500.0 for tid in name_by_id.keys()}
-    rec: Dict[int, Dict[str, int]] = {tid: {"wins": 0, "losses": 0, "ties": 0, "gp": 0} for tid in name_by_id.keys()}
+    rating: dict[int, float] = {tid: 1500.0 for tid in name_by_id.keys()}
+    rec: dict[int, dict[str, int]] = {
+        tid: {"wins": 0, "losses": 0, "ties": 0, "gp": 0} for tid in name_by_id.keys()
+    }
 
     def expected(ra: float, rb: float) -> float:
         return 1.0 / (1.0 + 10.0 ** ((rb - ra) / 400.0))
@@ -868,15 +885,19 @@ def elo_rankings(league_id: int, k: float = 32.0, db: Session = Depends(get_db))
         # Outcome as scores 1/0/0.5
         if hp > ap:
             Sa, Sb = 1.0, 0.0
-            rec[a]["wins"] += 1; rec[b]["losses"] += 1
+            rec[a]["wins"] += 1
+            rec[b]["losses"] += 1
         elif ap > hp:
             Sa, Sb = 0.0, 1.0
-            rec[b]["wins"] += 1; rec[a]["losses"] += 1
+            rec[b]["wins"] += 1
+            rec[a]["losses"] += 1
         else:
             Sa, Sb = 0.5, 0.5
-            rec[a]["ties"] += 1; rec[b]["ties"] += 1
+            rec[a]["ties"] += 1
+            rec[b]["ties"] += 1
 
-        rec[a]["gp"] += 1; rec[b]["gp"] += 1
+        rec[a]["gp"] += 1
+        rec[b]["gp"] += 1
 
         Ea = expected(rating[a], rating[b])
         Eb = expected(rating[b], rating[a])
@@ -887,15 +908,17 @@ def elo_rankings(league_id: int, k: float = 32.0, db: Session = Depends(get_db))
     rows = []
     for tid, name in name_by_id.items():
         r = rec[tid]
-        rows.append({
-            "team_id": tid,
-            "team_name": name,
-            "elo": rating[tid],
-            "wins": r["wins"],
-            "losses": r["losses"],
-            "ties": r["ties"],
-            "gp": r["gp"],
-        })
+        rows.append(
+            {
+                "team_id": tid,
+                "team_name": name,
+                "elo": rating[tid],
+                "wins": r["wins"],
+                "losses": r["losses"],
+                "ties": r["ties"],
+                "gp": r["gp"],
+            }
+        )
 
     rows.sort(key=lambda x: x["elo"], reverse=True)
     return rows

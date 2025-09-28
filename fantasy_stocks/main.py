@@ -10,24 +10,25 @@ import uuid
 from fastapi import FastAPI, Request
 
 # Import router modules (not the variables inside; we'll detect attr names below)
-from .routers import league
-from .routers import draft
-from .routers import lineup
-from .routers import standings
-from .routers import schedule
-from .routers import free_agency
-from .routers import players
-from .routers import teams
-from .routers import scoring
-from .routers import standings_snapshot
-from .routers import boxscore
-from .routers import prices
-from .routers import playoffs
-from .routers import season
-from .routers import awards
-from .routers import records
-from .routers import analytics
-
+from .routers import (
+    analytics,
+    awards,
+    boxscore,
+    draft,
+    free_agency,
+    league,
+    lineup,
+    players,
+    playoffs,
+    prices,
+    records,
+    schedule,
+    scoring,
+    season,
+    standings,
+    standings_snapshot,
+    teams,
+)
 
 # ---------- App ----------
 app = FastAPI(title="Fantasy Stocks MVP", version="0.1.0")
@@ -94,20 +95,20 @@ def _include_router_flex(app: FastAPI, module) -> None:
 
 
 # ---------- Include Routers (accepts either `router` or `route`) ----------
-_include_router_flex(app, league)              # /leagues
-_include_router_flex(app, draft)               # /draft
-_include_router_flex(app, lineup)              # /lineup
-_include_router_flex(app, standings)           # /standings
-_include_router_flex(app, schedule)            # /schedule
-_include_router_flex(app, free_agency)         # /free-agency
-_include_router_flex(app, players)             # /players
-_include_router_flex(app, teams)               # /teams
-_include_router_flex(app, scoring)             # /scoring
+_include_router_flex(app, league)  # /leagues
+_include_router_flex(app, draft)  # /draft
+_include_router_flex(app, lineup)  # /lineup
+_include_router_flex(app, standings)  # /standings
+_include_router_flex(app, schedule)  # /schedule
+_include_router_flex(app, free_agency)  # /free-agency
+_include_router_flex(app, players)  # /players
+_include_router_flex(app, teams)  # /teams
+_include_router_flex(app, scoring)  # /scoring
 _include_router_flex(app, standings_snapshot)  # /standings-snapshot
-_include_router_flex(app, boxscore)            # /boxscore
-_include_router_flex(app, prices)              # /prices
-_include_router_flex(app, playoffs)            # /playoffs
-_include_router_flex(app, season)              # /season
-_include_router_flex(app, awards)              # /awards
-_include_router_flex(app, records)             # /records
-_include_router_flex(app, analytics)           # /analytics
+_include_router_flex(app, boxscore)  # /boxscore
+_include_router_flex(app, prices)  # /prices
+_include_router_flex(app, playoffs)  # /playoffs
+_include_router_flex(app, season)  # /season
+_include_router_flex(app, awards)  # /awards
+_include_router_flex(app, records)  # /records
+_include_router_flex(app, analytics)  # /analytics

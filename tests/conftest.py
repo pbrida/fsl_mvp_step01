@@ -17,17 +17,19 @@ os.environ["TESTING"] = "1"
 # Single in-memory DB shared across the whole process
 TEST_DATABASE_URL = "sqlite+pysqlite://"
 
+
 @pytest.fixture(scope="session")
 def engine():
     engine = create_engine(
         TEST_DATABASE_URL,
         connect_args={"check_same_thread": False},
-        poolclass=StaticPool,      # <<< key: share the same memory DB
+        poolclass=StaticPool,  # <<< key: share the same memory DB
         future=True,
     )
     Base.metadata.create_all(bind=engine)
     yield engine
     engine.dispose()
+
 
 @pytest.fixture()
 def db_session(engine):
@@ -38,6 +40,7 @@ def db_session(engine):
     finally:
         session.close()
 
+
 @pytest.fixture()
 def client(db_session):
     # Override app DB dependency to use our shared in-memory session
@@ -47,6 +50,7 @@ def client(db_session):
     app.dependency_overrides[get_db] = _get_db_override
 
     from starlette.testclient import TestClient
+
     with TestClient(app) as c:
         yield c
 

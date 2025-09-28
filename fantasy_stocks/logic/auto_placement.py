@@ -1,36 +1,36 @@
 # fantasy_stocks/logic/auto_placement.py
 from __future__ import annotations
-from typing import Dict, Tuple
+
 from sqlalchemy.orm import Session
 
 from .. import models
 from .lineup_rules import (
+    BUCKET_ETF,
     BUCKET_LARGE_CAP,
     BUCKET_MID_CAP,
     BUCKET_SMALL_CAP,
-    BUCKET_ETF,
     PRIMARY,
-    REQUIRED,   # includes FLEX: 2
+    REQUIRED,  # includes FLEX: 2
 )
 
-PRIMARY_REQUIRED: Dict[str, int] = {
+PRIMARY_REQUIRED: dict[str, int] = {
     BUCKET_LARGE_CAP: REQUIRED[BUCKET_LARGE_CAP],
-    BUCKET_MID_CAP:   REQUIRED[BUCKET_MID_CAP],
+    BUCKET_MID_CAP: REQUIRED[BUCKET_MID_CAP],
     BUCKET_SMALL_CAP: REQUIRED[BUCKET_SMALL_CAP],
-    BUCKET_ETF:       REQUIRED[BUCKET_ETF],
+    BUCKET_ETF: REQUIRED[BUCKET_ETF],
 }
 FLEX_CAP = REQUIRED["FLEX"]
 STARTERS_TOTAL = sum(PRIMARY_REQUIRED.values()) + FLEX_CAP  # 8
 
 
-def _count_primary(db: Session, team_id: int) -> Tuple[Dict[str, int], int]:
+def _count_primary(db: Session, team_id: int) -> tuple[dict[str, int], int]:
     """Return counts of ACTIVE starters by primary bucket and total active."""
     rows = (
         db.query(models.RosterSlot)
         .filter(models.RosterSlot.team_id == team_id, models.RosterSlot.is_active == True)
         .all()
     )
-    counts: Dict[str, int] = {}
+    counts: dict[str, int] = {}
     total = 0
     for s in rows:
         b = (s.bucket or "").upper()
@@ -47,15 +47,15 @@ def _count_primary(db: Session, team_id: int) -> Tuple[Dict[str, int], int]:
     return counts, total
 
 
-def _surplus(counts: Dict[str, int]) -> int:
+def _surplus(counts: dict[str, int]) -> int:
     return sum(max(0, counts.get(b, 0) - PRIMARY_REQUIRED[b]) for b in PRIMARY)
 
 
-def _remaining_primary_deficit(counts: Dict[str, int]) -> int:
+def _remaining_primary_deficit(counts: dict[str, int]) -> int:
     return sum(max(0, PRIMARY_REQUIRED[b] - counts.get(b, 0)) for b in PRIMARY)
 
 
-def _can_activate_now(counts: Dict[str, int], total_active: int, new_bucket: str) -> bool:
+def _can_activate_now(counts: dict[str, int], total_active: int, new_bucket: str) -> bool:
     """Decide if we should set is_active=True for the new slot."""
     if total_active >= STARTERS_TOTAL:
         return False

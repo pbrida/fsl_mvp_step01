@@ -1,51 +1,58 @@
 # fantasy_stocks/routers/players.py
 from __future__ import annotations
-from typing import List, Optional
-from fastapi import APIRouter, Depends, Query
-from pydantic import BaseModel, Field
-from sqlalchemy.orm import Session
-from sqlalchemy import or_, select
+
 import csv
 import io
 
-from ..db import get_db
+from fastapi import APIRouter, Depends, Query
+from pydantic import BaseModel, Field
+from sqlalchemy import or_, select
+from sqlalchemy.orm import Session
+
 from .. import models
+from ..db import get_db
 
 router = APIRouter(prefix="/players", tags=["players"])
 
 # ---------- Schemas ----------
 
+
 class SecurityIn(BaseModel):
     symbol: str = Field(..., min_length=1, max_length=20)
-    name: Optional[str] = None
-    is_etf: Optional[bool] = None
-    market_cap: Optional[float] = None
-    sector: Optional[str] = None
-    primary_bucket: Optional[str] = None
-    adp: Optional[float] = None
-    proj_points: Optional[float] = None
+    name: str | None = None
+    is_etf: bool | None = None
+    market_cap: float | None = None
+    sector: str | None = None
+    primary_bucket: str | None = None
+    adp: float | None = None
+    proj_points: float | None = None
+
 
 class SecurityOut(BaseModel):
     symbol: str
-    name: Optional[str] = None
-    is_etf: Optional[bool] = None
-    market_cap: Optional[float] = None
-    sector: Optional[str] = None
-    primary_bucket: Optional[str] = None
-    adp: Optional[float] = None
-    proj_points: Optional[float] = None
+    name: str | None = None
+    is_etf: bool | None = None
+    market_cap: float | None = None
+    sector: str | None = None
+    primary_bucket: str | None = None
+    adp: float | None = None
+    proj_points: float | None = None
+
 
 class IngestCSVBody(BaseModel):
     """
     CSV text with header. Columns supported (case-insensitive):
       symbol (required), name, is_etf, market_cap, sector, primary_bucket, adp, proj_points
     """
+
     csv: str = Field(..., description="Raw CSV text including header row")
     upsert: bool = Field(True, description="Upsert rows by symbol (insert or update existing)")
 
+
 # ---------- Helpers ----------
 
-def _to_bool(v: Optional[str]) -> Optional[bool]:
+
+def _to_bool(v: str | None) -> bool | None:
     if v is None:
         return None
     s = str(v).strip().lower()
@@ -55,7 +62,8 @@ def _to_bool(v: Optional[str]) -> Optional[bool]:
         return False
     return None
 
-def _to_float(v: Optional[str]) -> Optional[float]:
+
+def _to_float(v: str | None) -> float | None:
     if v is None or str(v).strip() == "":
         return None
     try:
@@ -63,10 +71,12 @@ def _to_float(v: Optional[str]) -> Optional[float]:
     except ValueError:
         return None
 
+
 # ---------- Endpoints ----------
 
+
 @router.post("/seed")
-def seed_securities(items: List[SecurityIn], db: Session = Depends(get_db)):
+def seed_securities(items: list[SecurityIn], db: Session = Depends(get_db)):
     """
     Upsert a list of securities for dev/test.
     """
@@ -81,12 +91,13 @@ def seed_securities(items: List[SecurityIn], db: Session = Depends(get_db)):
         row.is_etf = it.is_etf
         row.market_cap = it.market_cap
         row.sector = it.sector
-        row.primary_bucket = (it.primary_bucket.strip().upper() if it.primary_bucket else None)
+        row.primary_bucket = it.primary_bucket.strip().upper() if it.primary_bucket else None
         row.adp = it.adp
         row.proj_points = it.proj_points
         upserted.append(sym)
     db.commit()
     return {"ok": True, "upserted": upserted}
+
 
 @router.post("/ingest_csv")
 def ingest_csv(body: IngestCSVBody, db: Session = Depends(get_db)):
@@ -106,10 +117,10 @@ def ingest_csv(body: IngestCSVBody, db: Session = Depends(get_db)):
             "got": sorted(list(header)),
         }
 
-    upserted: List[str] = []
-    skipped: List[dict] = []
+    upserted: list[str] = []
+    skipped: list[dict] = []
     for row in reader:
-        norm = { (k or "").strip().lower(): (v if v is not None else None) for k, v in row.items() }
+        norm = {(k or "").strip().lower(): (v if v is not None else None) for k, v in row.items()}
 
         sym_raw = norm.get("symbol")
         if not sym_raw or not str(sym_raw).strip():
@@ -121,7 +132,7 @@ def ingest_csv(body: IngestCSVBody, db: Session = Depends(get_db)):
         is_etf = _to_bool(norm.get("is_etf"))
         market_cap = _to_float(norm.get("market_cap"))
         sector = norm.get("sector")
-        primary_bucket = (norm.get("primary_bucket") or None)
+        primary_bucket = norm.get("primary_bucket") or None
         if primary_bucket:
             primary_bucket = primary_bucket.strip().upper()
         adp = _to_float(norm.get("adp"))
@@ -148,6 +159,8 @@ def ingest_csv(body: IngestCSVBody, db: Session = Depends(get_db)):
 
     db.commit()
     return {"ok": True, "upserted": upserted, "skipped": skipped}
+
+
 @router.post("/reset")
 def reset_players_table(db: Session = Depends(get_db)):
     """
@@ -159,18 +172,20 @@ def reset_players_table(db: Session = Depends(get_db)):
     return {"ok": True, "deleted": True}
 
 
-@router.get("/search", response_model=List[SecurityOut])
+@router.get("/search", response_model=list[SecurityOut])
 def search_players(
-    q: Optional[str] = Query(None, description="Search by name or symbol"),
-    bucket: Optional[str] = Query(None, description="Filter by primary bucket"),
-    is_etf: Optional[bool] = Query(None),
-    min_cap: Optional[float] = Query(None, description="Minimum market cap (inclusive)"),
-    max_cap: Optional[float] = Query(None, description="Maximum market cap (inclusive)"),
-    sector: Optional[str] = Query(None),
-    available_in_league: Optional[int] = Query(None, description="League ID to exclude rostered symbols"),
+    q: str | None = Query(None, description="Search by name or symbol"),
+    bucket: str | None = Query(None, description="Filter by primary bucket"),
+    is_etf: bool | None = Query(None),
+    min_cap: float | None = Query(None, description="Minimum market cap (inclusive)"),
+    max_cap: float | None = Query(None, description="Maximum market cap (inclusive)"),
+    sector: str | None = Query(None),
+    available_in_league: int | None = Query(
+        None, description="League ID to exclude rostered symbols"
+    ),
     # NEW sorting
-    sort: Optional[str] = Query(None, description="symbol|market_cap|adp|proj_points"),
-    order: Optional[str] = Query(None, description="asc|desc"),
+    sort: str | None = Query(None, description="symbol|market_cap|adp|proj_points"),
+    order: str | None = Query(None, description="asc|desc"),
     limit: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
 ):
@@ -212,8 +227,8 @@ def search_players(
     sort_map = {
         "symbol": models.Security.symbol.asc(),
         "market_cap": models.Security.market_cap.desc(),  # default: larger first
-        "adp": models.Security.adp.asc(),                 # default: lower first
-        "proj_points": models.Security.proj_points.desc() # default: higher first
+        "adp": models.Security.adp.asc(),  # default: lower first
+        "proj_points": models.Security.proj_points.desc(),  # default: higher first
     }
     if sort:
         key = sort.strip().lower()

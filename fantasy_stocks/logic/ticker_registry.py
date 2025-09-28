@@ -1,6 +1,6 @@
 # fantasy_stocks/logic/ticker_registry.py
 from __future__ import annotations
-from typing import Optional
+
 from sqlalchemy.orm import Session
 
 from .. import models
@@ -10,10 +10,8 @@ _TICKER_TO_BUCKET = {
     # ETFs
     "VTI": "ETF",
     "VOO": "ETF",
-
     # Small-cap
     "SHOP": "SMALL_CAP",
-
     # Large caps (defaults)
     "AAPL": "LARGE_CAP",
     "MSFT": "LARGE_CAP",
@@ -30,19 +28,22 @@ _TICKER_TO_BUCKET = {
     "BABA": "LARGE_CAP",
 }
 
-def resolve_bucket(symbol: str) -> Optional[str]:
+
+def resolve_bucket(symbol: str) -> str | None:
     """Pure in-memory fallback resolver."""
     if not symbol:
         return None
     return _TICKER_TO_BUCKET.get(symbol.strip().upper())
 
+
 # ---- DB-first resolver (preferred) ----
 
 # Simple, tweakable thresholds (can move to config later)
 _LARGE_MIN = 10_000_000_000  # >= $10B
-_MID_MIN   =  2_000_000_000  # $2B–$10B is mid; < $2B is small
+_MID_MIN = 2_000_000_000  # $2B–$10B is mid; < $2B is small
 
-def _derive_bucket_from_row(row: models.Security) -> Optional[str]:
+
+def _derive_bucket_from_row(row: models.Security) -> str | None:
     if row is None:
         return None
     # 1) explicit ETF
@@ -61,7 +62,8 @@ def _derive_bucket_from_row(row: models.Security) -> Optional[str]:
         return "SMALL_CAP"
     return None
 
-def resolve_bucket_db_first(db: Session, symbol: str) -> Optional[str]:
+
+def resolve_bucket_db_first(db: Session, symbol: str) -> str | None:
     """
     Preferred resolution path:
       1) Look up in `securities` table, return cached/derived bucket if possible.

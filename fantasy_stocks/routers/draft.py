@@ -1,15 +1,13 @@
 # fantasy_stocks/routers/draft.py
 from __future__ import annotations
 
-from typing import List, Optional
-
 from fastapi import APIRouter, Depends, HTTPException, Path
 from pydantic import BaseModel, Field
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from ..db import get_db
 from .. import models
+from ..db import get_db
 from ..logic.auto_placement import auto_place_new_slot
 from ..logic.ticker_registry import resolve_bucket_db_first
 
@@ -26,10 +24,10 @@ class RosterSlotOut(BaseModel):
     team_id: int
     symbol: str
     is_active: bool
-    bucket: Optional[str] = None
+    bucket: str | None = None
 
     @classmethod
-    def from_model(cls, rs: models.RosterSlot) -> "RosterSlotOut":
+    def from_model(cls, rs: models.RosterSlot) -> RosterSlotOut:
         return cls(
             id=rs.id,
             team_id=rs.team_id,
@@ -43,16 +41,12 @@ class SetBucketBody(BaseModel):
     bucket: str = Field(..., min_length=1, max_length=32)
 
 
-def _upper(s: Optional[str]) -> str:
+def _upper(s: str | None) -> str:
     return (s or "").strip().upper()
 
 
 def _next_pick_no_for_league(db: Session, league_id: int) -> int:
-    count = (
-        db.query(models.DraftPick)
-        .filter(models.DraftPick.league_id == league_id)
-        .count()
-    )
+    count = db.query(models.DraftPick).filter(models.DraftPick.league_id == league_id).count()
     return count + 1
 
 
@@ -97,7 +91,9 @@ def make_pick(body: PickBody, db: Session = Depends(get_db)):
 
     placement = None
     if resolved:
-        placement = auto_place_new_slot(db, team_id=team.id, slot_id=slot.id, primary_bucket=resolved)
+        placement = auto_place_new_slot(
+            db, team_id=team.id, slot_id=slot.id, primary_bucket=resolved
+        )
 
     return {
         "ok": True,
@@ -112,11 +108,13 @@ def make_pick(body: PickBody, db: Session = Depends(get_db)):
         "slot": RosterSlotOut.from_model(slot).model_dump(),
         "bucket_resolved": bool(resolved),
         "placement": placement,
-        "hint": (None if resolved else "No registry/DB mapping; slot left inactive until bucket is set."),
+        "hint": (
+            None if resolved else "No registry/DB mapping; slot left inactive until bucket is set."
+        ),
     }
 
 
-@router.get("/roster/{team_id}", response_model=List[RosterSlotOut])
+@router.get("/roster/{team_id}", response_model=list[RosterSlotOut])
 def roster(team_id: int = Path(..., ge=1), db: Session = Depends(get_db)):
     team = db.get(models.Team, team_id)
     if not team:

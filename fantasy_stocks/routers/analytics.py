@@ -1,21 +1,27 @@
 # fantasy_stocks/routers/analytics.py
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from ..db import get_db
 from .. import models
+from ..db import get_db
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
 
 
-def _teams_in_league(db: Session, league_id: int) -> List[models.Team]:
-    return db.query(models.Team).filter(models.Team.league_id == league_id).order_by(models.Team.id.asc()).all()
+def _teams_in_league(db: Session, league_id: int) -> list[models.Team]:
+    return (
+        db.query(models.Team)
+        .filter(models.Team.league_id == league_id)
+        .order_by(models.Team.id.asc())
+        .all()
+    )
 
 
-def _scored_matches(db: Session, league_id: int) -> List[models.Match]:
+def _scored_matches(db: Session, league_id: int) -> list[models.Match]:
     return (
         db.query(models.Match)
         .filter(
@@ -29,7 +35,7 @@ def _scored_matches(db: Session, league_id: int) -> List[models.Match]:
 
 
 @router.get("/{league_id}/h2h_matrix")
-def h2h_matrix(league_id: int, db: Session = Depends(get_db)) -> Dict[str, Any]:
+def h2h_matrix(league_id: int, db: Session = Depends(get_db)) -> dict[str, Any]:
     """
     Return a head-to-head matrix for the league, summarizing results between every pair of teams.
 
@@ -58,11 +64,11 @@ def h2h_matrix(league_id: int, db: Session = Depends(get_db)) -> Dict[str, Any]:
     idx_by_id = {t.id: i for i, t in enumerate(teams)}
     N = len(teams)
 
-    def zero() -> Dict[str, float]:
+    def zero() -> dict[str, float]:
         return {"gp": 0.0, "w": 0.0, "l": 0.0, "t": 0.0, "pf": 0.0, "pa": 0.0}
 
     # Initialize N x N matrix of zeros
-    M: List[List[Dict[str, float]]] = [[zero() for _ in range(N)] for _ in range(N)]
+    M: list[list[dict[str, float]]] = [[zero() for _ in range(N)] for _ in range(N)]
 
     for m in _scored_matches(db, league_id):
         a = idx_by_id.get(m.home_team_id)

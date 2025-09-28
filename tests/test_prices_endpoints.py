@@ -2,6 +2,7 @@ from io import BytesIO
 import json
 import pytest
 
+
 def test_openapi_exposes_prices_paths(client):
     r = client.get("/openapi.json")
     assert r.status_code == 200
@@ -14,7 +15,7 @@ def test_openapi_exposes_prices_paths(client):
 def test_prices_bulk_upsert_is_idempotent(client):
     rows = [
         {"symbol": "LC1", "date": "2025-09-15", "open": 100.0, "close": 110.0},
-        {"symbol": "SM1", "date": "2025-09-16", "open": 50.0,  "close": 45.0},
+        {"symbol": "SM1", "date": "2025-09-16", "open": 50.0, "close": 45.0},
     ]
     r1 = client.post("/prices/bulk", json=rows)
     assert r1.status_code == 200
@@ -68,7 +69,9 @@ def test_prices_csv_upload_with_good_data(client):
         ("symbol,date,open,close\nAAPL,2025-09-15,one,2\n", 400, "invalid number"),
     ],
 )
-def test_prices_csv_validation_errors(client, csv_text, expected_status, expected_msg_frag):
+def test_prices_csv_validation_errors(
+    client, csv_text, expected_status, expected_msg_frag
+):
     files = {"file": ("prices.csv", BytesIO(csv_text.encode("utf-8")), "text/csv")}
     r = client.post("/prices/csv", files=files)
     assert r.status_code == expected_status

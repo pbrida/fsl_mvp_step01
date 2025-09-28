@@ -1,25 +1,27 @@
 # fantasy_stocks/routers/playoffs.py
 from __future__ import annotations
-from typing import List, Dict, Any, Tuple
+
+from typing import Any
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from ..db import get_db
 from .. import models
+from ..db import get_db
 from ..services.periods import current_week_label
 
 # ✅ Use the same ordering as our /standings tiebreakers:
 #    win_pct → head-to-head (among tied) → point diff → points for → deterministic coin
 from .standings import (
     _aggregate_table_rows,
-    _h2h_stats_among,
     _deterministic_coin,
+    _h2h_stats_among,
 )
 
 route = APIRouter(prefix="/playoffs", tags=["playoffs"])
 
 
-def _seed_order_by_tiebreakers(db: Session, league_id: int) -> List[int]:
+def _seed_order_by_tiebreakers(db: Session, league_id: int) -> list[int]:
     """
     Produce a full seeding order using the same rules as /standings/{league_id}/tiebreakers:
       1) Overall win_pct
@@ -36,7 +38,7 @@ def _seed_order_by_tiebreakers(db: Session, league_id: int) -> List[int]:
     group_ids = {r.team_id for r in base}
     h2h = _h2h_stats_among(db, league_id, group_ids)
 
-    def key_for(row) -> Tuple:
+    def key_for(row) -> tuple:
         win_pct = float(row.win_pct or 0.0)
         diff = float(row.point_diff or 0.0)
         pf = float(row.points_for or 0.0)
@@ -50,7 +52,7 @@ def _seed_order_by_tiebreakers(db: Session, league_id: int) -> List[int]:
     return [r.team_id for r in ordered]
 
 
-def _seed_top4(db: Session, league_id: int) -> List[int]:
+def _seed_top4(db: Session, league_id: int) -> list[int]:
     """Return team_ids of seeds [1..4] using the tiebreaker-based order."""
     order = _seed_order_by_tiebreakers(db, league_id)
     if len(order) < 4:
@@ -59,7 +61,7 @@ def _seed_top4(db: Session, league_id: int) -> List[int]:
 
 
 @route.post("/generate/{league_id}")
-def generate_playoffs(league_id: int, db: Session = Depends(get_db)) -> Dict[str, Any]:
+def generate_playoffs(league_id: int, db: Session = Depends(get_db)) -> dict[str, Any]:
     """
     Create two semifinal Matches for the top-4 teams by tiebreaker order.
     Weeks are labeled with current ISO week plus a suffix to avoid collisions.
@@ -97,7 +99,8 @@ def generate_playoffs(league_id: int, db: Session = Depends(get_db)) -> Dict[str
     m2 = models.Match(league_id=league_id, week=week_sf, home_team_id=s2, away_team_id=s3)
     db.add_all([m1, m2])
     db.commit()
-    db.refresh(m1); db.refresh(m2)
+    db.refresh(m1)
+    db.refresh(m2)
 
     return {
         "week": week_sf,
@@ -109,7 +112,7 @@ def generate_playoffs(league_id: int, db: Session = Depends(get_db)) -> Dict[str
 
 
 @route.post("/advance/{league_id}")
-def advance_playoffs(league_id: int, db: Session = Depends(get_db)) -> Dict[str, Any]:
+def advance_playoffs(league_id: int, db: Session = Depends(get_db)) -> dict[str, Any]:
     """
     After semifinals exist (and possibly scored), create FINAL and THIRD-PLACE matches.
     Tie/winner missing => advance higher seed by current tiebreaker order.
@@ -130,7 +133,9 @@ def advance_playoffs(league_id: int, db: Session = Depends(get_db)) -> Dict[str,
         .all()
     )
     if len(semis) < 2:
-        raise HTTPException(status_code=400, detail="Semifinals not found. Generate playoffs first.")
+        raise HTTPException(
+            status_code=400, detail="Semifinals not found. Generate playoffs first."
+        )
 
     # Determine winners with seed tiebreak if needed
     seed_order = _seed_order_by_tiebreakers(db, league_id)  # full order
@@ -164,10 +169,12 @@ def advance_playoffs(league_id: int, db: Session = Depends(get_db)) -> Dict[str,
 
     if not already_final:
         mf = models.Match(league_id=league_id, week=week_final, home_team_id=w1, away_team_id=w2)
-        db.add(mf); created.append(("final", mf))
+        db.add(mf)
+        created.append(("final", mf))
     if not already_third:
         mt = models.Match(league_id=league_id, week=week_third, home_team_id=l1, away_team_id=l2)
-        db.add(mt); created.append(("third", mt))
+        db.add(mt)
+        created.append(("third", mt))
 
     if created:
         db.commit()
@@ -185,17 +192,29 @@ def advance_playoffs(league_id: int, db: Session = Depends(get_db)) -> Dict[str,
         .first()
     )
     return {
-        "final": None if not final else {"id": final.id, "home_team_id": final.home_team_id, "away_team_id": final.away_team_id},
-        "third_place": None if not third else {"id": third.id, "home_team_id": third.home_team_id, "away_team_id": third.away_team_id},
+        "final": None
+        if not final
+        else {
+            "id": final.id,
+            "home_team_id": final.home_team_id,
+            "away_team_id": final.away_team_id,
+        },
+        "third_place": None
+        if not third
+        else {
+            "id": third.id,
+            "home_team_id": third.home_team_id,
+            "away_team_id": third.away_team_id,
+        },
     }
 
 
 @route.get("/{league_id}")
-def get_playoffs(league_id: int, db: Session = Depends(get_db)) -> Dict[str, Any]:
+def get_playoffs(league_id: int, db: Session = Depends(get_db)) -> dict[str, Any]:
     """Return all playoff matches (SF/FINAL/THIRD) for the current base week."""
     base = current_week_label()
     weeks = [f"{base}-PO-SF", f"{base}-PO-FINAL", f"{base}-PO-THIRD"]
-    out: Dict[str, Any] = {}
+    out: dict[str, Any] = {}
     for w in weeks:
         ms = (
             db.query(models.Match)
@@ -203,5 +222,7 @@ def get_playoffs(league_id: int, db: Session = Depends(get_db)) -> Dict[str, Any
             .order_by(models.Match.id.asc())
             .all()
         )
-        out[w] = [{"id": m.id, "home_team_id": m.home_team_id, "away_team_id": m.away_team_id} for m in ms]
+        out[w] = [
+            {"id": m.id, "home_team_id": m.home_team_id, "away_team_id": m.away_team_id} for m in ms
+        ]
     return out

@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 from datetime import date, timedelta
-from typing import List, Tuple
 
 __all__ = [
     "iso_week_label",
@@ -16,6 +15,7 @@ __all__ = [
 # - Labels use "YYYY-Www" (e.g., "2025-W39")
 # - Bounds are Monday..Sunday inclusive, per ISO-8601
 # ---------------------------------------------------------------------------
+
 
 def iso_week_label(d: date) -> str:
     """
@@ -45,7 +45,7 @@ def _parse_iso_week(iso_week: str) -> tuple[int, int]:
         raise ValueError(f"Invalid iso_week '{iso_week}'. Expected 'YYYY-Www'.") from exc
 
 
-def iso_week_bounds(iso_week: str) -> Tuple[date, date]:
+def iso_week_bounds(iso_week: str) -> tuple[date, date]:
     """
     Given an ISO week label 'YYYY-Www', return (monday, sunday) dates inclusive.
     """
@@ -55,7 +55,7 @@ def iso_week_bounds(iso_week: str) -> Tuple[date, date]:
     return monday, sunday
 
 
-def next_weeks(start_iso_week: str, n: int) -> List[str]:
+def next_weeks(start_iso_week: str, n: int) -> list[str]:
     """
     Return the next n ISO week labels starting *after* start_iso_week.
     Example: next_weeks("2025-W39", 2) -> ["2025-W40", "2025-W41"]
@@ -64,7 +64,7 @@ def next_weeks(start_iso_week: str, n: int) -> List[str]:
     # Start from the Monday of the *next* week
     start_monday = date.fromisocalendar(year, week, 1) + timedelta(days=7)
 
-    labels: List[str] = []
+    labels: list[str] = []
     cur = start_monday
     for _ in range(n):
         labels.append(iso_week_label(cur))

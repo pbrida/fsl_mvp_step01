@@ -1,8 +1,17 @@
 # tests/test_ticker_registry_integration.py
 
+
 def test_draft_uses_registry_for_known_ticker(client):
     # Create league + team
-    r = client.post("/leagues/", json={"name": "Registry League", "roster_slots": 14, "starters": 8, "bucket_requirements": {"X": 8}})
+    r = client.post(
+        "/leagues/",
+        json={
+            "name": "Registry League",
+            "roster_slots": 14,
+            "starters": 8,
+            "bucket_requirements": {"X": 8},
+        },
+    )
     assert r.status_code == 200
     league_id = r.json()["id"]
 
@@ -27,7 +36,15 @@ def test_draft_uses_registry_for_known_ticker(client):
 
 
 def test_draft_unknown_ticker_stays_inactive(client):
-    r = client.post("/leagues/", json={"name": "Unknown League", "roster_slots": 14, "starters": 8, "bucket_requirements": {"Y": 8}})
+    r = client.post(
+        "/leagues/",
+        json={
+            "name": "Unknown League",
+            "roster_slots": 14,
+            "starters": 8,
+            "bucket_requirements": {"Y": 8},
+        },
+    )
     assert r.status_code == 200
     league_id = r.json()["id"]
 

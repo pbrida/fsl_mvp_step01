@@ -1,17 +1,16 @@
 # fantasy_stocks/routers/boxscore.py
 from __future__ import annotations
 
-from typing import Dict, List, Optional, Tuple
 from fastapi import APIRouter, Depends, HTTPException, Path
 from sqlalchemy.orm import Session
 
-from ..db import get_db
 from .. import models
+from ..db import get_db
 
 router = APIRouter(prefix="/boxscore", tags=["boxscore"])
 
 # Keep these in sync with your fixed rules used elsewhere:
-PRIMARY_REQUIREMENTS: Dict[str, int] = {
+PRIMARY_REQUIREMENTS: dict[str, int] = {
     "LARGE_CAP": 2,
     "MID_CAP": 1,
     "SMALL_CAP": 2,
@@ -21,7 +20,7 @@ FLEX_SLOTS = 2
 STARTERS_TOTAL = sum(PRIMARY_REQUIREMENTS.values()) + FLEX_SLOTS  # 8
 
 
-def _active_slots_with_points(db: Session, team_id: int) -> List[dict]:
+def _active_slots_with_points(db: Session, team_id: int) -> list[dict]:
     """
     Return active roster slots for a team joined with Security to grab proj_points.
     """
@@ -32,7 +31,7 @@ def _active_slots_with_points(db: Session, team_id: int) -> List[dict]:
         .order_by(models.RosterSlot.id.asc())
         .all()
     )
-    out: List[dict] = []
+    out: list[dict] = []
     for rs, proj in rows:
         out.append(
             {
@@ -85,7 +84,7 @@ def team_boxscore(
     active = _active_slots_with_points(db, team_id=team.id)
 
     # Group by bucket for allocation
-    by_bucket: Dict[str, List[dict]] = {}
+    by_bucket: dict[str, list[dict]] = {}
     for s in active:
         b = s["bucket"]
         if not b:
@@ -95,7 +94,7 @@ def team_boxscore(
         by_bucket.setdefault(b, []).append(s)
 
     # PRIMARY allocation
-    primary_used: Dict[str, List[dict]] = {k: [] for k in PRIMARY_REQUIREMENTS.keys()}
+    primary_used: dict[str, list[dict]] = {k: [] for k in PRIMARY_REQUIREMENTS.keys()}
     primary_total_points = 0.0
 
     for bucket, need in PRIMARY_REQUIREMENTS.items():
@@ -113,7 +112,7 @@ def team_boxscore(
         by_bucket[bucket] = [c for c in candidates if c["slot_id"] not in chosen_ids]
 
     # FLEX allocation from remaining primaries
-    flex_candidates: List[dict] = []
+    flex_candidates: list[dict] = []
     for bucket in PRIMARY_REQUIREMENTS.keys():
         flex_candidates.extend(by_bucket.get(bucket, []))
     # Order by points high→low then by slot_id to be deterministic
@@ -124,7 +123,9 @@ def team_boxscore(
     flex_total_points = sum(f["points"] for f in flex_used)
 
     # Unused active starters (should be uncommon)
-    used_ids = {c["slot_id"] for lst in primary_used.values() for c in lst} | {f["slot_id"] for f in flex_used}
+    used_ids = {c["slot_id"] for lst in primary_used.values() for c in lst} | {
+        f["slot_id"] for f in flex_used
+    }
     unused_active = [s for s in active if s["slot_id"] not in used_ids]
 
     return {
@@ -139,17 +140,32 @@ def team_boxscore(
         },
         "primary": {
             bucket: [
-                {"slot_id": x["slot_id"], "symbol": x["symbol"], "bucket": x["bucket"], "points": x["points"]}
+                {
+                    "slot_id": x["slot_id"],
+                    "symbol": x["symbol"],
+                    "bucket": x["bucket"],
+                    "points": x["points"],
+                }
                 for x in lst
             ]
             for bucket, lst in primary_used.items()
         },
         "flex": [
-            {"slot_id": x["slot_id"], "symbol": x["symbol"], "bucket": x["bucket"], "points": x["points"]}
+            {
+                "slot_id": x["slot_id"],
+                "symbol": x["symbol"],
+                "bucket": x["bucket"],
+                "points": x["points"],
+            }
             for x in flex_used
         ],
         "unused_active": [
-            {"slot_id": x["slot_id"], "symbol": x["symbol"], "bucket": x["bucket"], "points": x["points"]}
+            {
+                "slot_id": x["slot_id"],
+                "symbol": x["symbol"],
+                "bucket": x["bucket"],
+                "points": x["points"],
+            }
             for x in unused_active
         ],
         "totals": {

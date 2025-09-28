@@ -1,14 +1,15 @@
 # fantasy_stocks/logic/scoring.py
 from __future__ import annotations
 
-from typing import Iterable, List, Tuple, Optional, Set
 from sqlalchemy.orm import Session
 
 from .. import models
-from ..services import pricing, periods
+from ..services import pricing
 
 
-def _active_starter_symbols(db: Session, team_id: int, starters_limit: Optional[int] = None) -> List[str]:
+def _active_starter_symbols(
+    db: Session, team_id: int, starters_limit: int | None = None
+) -> list[str]:
     """
     Return the symbols of active starters for a team, in any stable order.
     If starters_limit is provided, trim to that count.
@@ -38,7 +39,9 @@ def compute_team_points_projections(db: Session, league: models.League, team_id:
     return sum(_proj_points_for_symbol(db, sym) for sym in symbols)
 
 
-def compute_team_points_live(db: Session, league: models.League, team_id: int, iso_week: str) -> float:
+def compute_team_points_live(
+    db: Session, league: models.League, team_id: int, iso_week: str
+) -> float:
     """
     Sum per-day % changes for each starter over the given ISO week, then sum across starters.
     """
@@ -56,7 +59,7 @@ def close_week(db: Session, league_id: int, iso_week: str) -> None:
         raise ValueError(f"League {league_id} not found")
 
     # Fetch all matches for this week
-    matches: List[models.Match] = (
+    matches: list[models.Match] = (
         db.query(models.Match)
         .filter(models.Match.league_id == league.id, models.Match.week == iso_week)
         .order_by(models.Match.id.asc())
@@ -87,7 +90,11 @@ def close_week(db: Session, league_id: int, iso_week: str) -> None:
                     existing.points = pts
                     db.add(existing)
             else:
-                db.add(models.TeamScore(league_id=league.id, team_id=team_id, period=iso_week, points=pts))
+                db.add(
+                    models.TeamScore(
+                        league_id=league.id, team_id=team_id, period=iso_week, points=pts
+                    )
+                )
 
         # Update match outcome
         m.home_points = home_pts
@@ -105,6 +112,7 @@ def close_week(db: Session, league_id: int, iso_week: str) -> None:
 # Backward-compat helper names
 # ----------------------------
 
+
 def close_week_with_proj_points(db: Session, league_id: int, iso_week: str) -> None:
     """
     Force-close a week using projections (used by older tests/callers).
@@ -113,7 +121,7 @@ def close_week_with_proj_points(db: Session, league_id: int, iso_week: str) -> N
     if not league:
         raise ValueError(f"League {league_id} not found")
 
-    matches: List[models.Match] = (
+    matches: list[models.Match] = (
         db.query(models.Match)
         .filter(models.Match.league_id == league.id, models.Match.week == iso_week)
         .order_by(models.Match.id.asc())
@@ -140,7 +148,11 @@ def close_week_with_proj_points(db: Session, league_id: int, iso_week: str) -> N
                     existing.points = pts
                     db.add(existing)
             else:
-                db.add(models.TeamScore(league_id=league.id, team_id=team_id, period=iso_week, points=pts))
+                db.add(
+                    models.TeamScore(
+                        league_id=league.id, team_id=team_id, period=iso_week, points=pts
+                    )
+                )
 
         m.home_points = home_pts
         m.away_points = away_pts
@@ -162,8 +174,9 @@ def simulate_season_with_proj_points(db: Session, league_id: int) -> None:
     if not league:
         raise ValueError(f"League {league_id} not found")
 
-    weeks: List[str] = [
-        w for (w,) in db.query(models.Match.week)
+    weeks: list[str] = [
+        w
+        for (w,) in db.query(models.Match.week)
         .filter(models.Match.league_id == league.id)
         .distinct()
         .order_by(models.Match.week.asc())

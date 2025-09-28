@@ -1,12 +1,13 @@
 # fantasy_stocks/routers/scoring.py
 from __future__ import annotations
 
-from typing import Dict, List, TypedDict
+from typing import TypedDict
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from ..db import get_db
 from .. import models
+from ..db import get_db
 from ..services.periods import current_week_label
 
 router = APIRouter(prefix="/scoring", tags=["scoring"])
@@ -26,7 +27,7 @@ def _sum_active_proj_points(db: Session, team_id: int) -> float:
         return 0.0
 
     symbols = [s.symbol for s in slots]
-    sec_map: Dict[str, models.Security] = {
+    sec_map: dict[str, models.Security] = {
         s.symbol: s
         for s in db.query(models.Security).filter(models.Security.symbol.in_(symbols)).all()
     }
@@ -40,7 +41,7 @@ def _sum_active_proj_points(db: Session, team_id: int) -> float:
 
 class _ProjCloseResult(TypedDict):
     matches_scored: int
-    totals: Dict[int, float]
+    totals: dict[int, float]
 
 
 def _close_week_proj(db: Session, league: models.League, period: str) -> _ProjCloseResult:
@@ -56,7 +57,7 @@ def _close_week_proj(db: Session, league: models.League, period: str) -> _ProjCl
     )
 
     matches_scored = 0
-    totals: Dict[int, float] = {}
+    totals: dict[int, float] = {}
 
     for m in matches:
         # skip if already closed
@@ -146,7 +147,7 @@ def simulate_season(league_id: int, db: Session = Depends(get_db)):
     )
     weeks = sorted({w[0] for w in week_rows})
 
-    closed_weeks: List[_ClosedWeek] = []
+    closed_weeks: list[_ClosedWeek] = []
     for w in weeks:
         res = _close_week_proj(db, league, w)
         closed_weeks.append({"week": w, "matches_scored": res["matches_scored"]})
