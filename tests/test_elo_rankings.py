@@ -253,10 +253,7 @@ def test_elo_rankings_flow(client):
     activate8(client, t_gamma)
 
     # Single round-robin season, then score all regular weeks (projections stub)
-    assert (
-        client.post(f"/schedule/season/{league_id}", params={"weeks": 0}).status_code
-        == 200
-    )
+    assert client.post(f"/schedule/season/{league_id}", params={"weeks": 0}).status_code == 200
     assert client.post(f"/standings/{league_id}/close_season").status_code == 200
 
     # Elo rankings

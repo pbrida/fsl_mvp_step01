@@ -54,11 +54,7 @@ def _find_weeks_like_suffix(db: Session, league_id: int, suffix: str) -> list[st
 
 
 def _get_matches_for_week(db: Session, league_id: int, week: str) -> list[models.Match]:
-    return (
-        db.query(models.Match)
-        .filter(and_(models.Match.league_id == league_id, models.Match.week == week))
-        .all()
-    )
+    return db.query(models.Match).filter(and_(models.Match.league_id == league_id, models.Match.week == week)).all()
 
 
 def _are_all_scored(ms: list[models.Match]) -> bool:
@@ -80,10 +76,7 @@ def _ensure_semifinals(db: Session, league_id: int) -> dict[str, Any]:
         semis = _get_matches_for_week(db, league_id, week_sf)
         return {
             "week": week_sf,
-            "semifinals": [
-                {"id": m.id, "home_team_id": m.home_team_id, "away_team_id": m.away_team_id}
-                for m in semis
-            ],
+            "semifinals": [{"id": m.id, "home_team_id": m.home_team_id, "away_team_id": m.away_team_id} for m in semis],
         }
 
     seeds: list[int] = _seed_order_by_tiebreakers(db, league_id)
@@ -109,9 +102,7 @@ def _ensure_semifinals(db: Session, league_id: int) -> dict[str, Any]:
     }
 
 
-def _winners_and_losers_of_semis(
-    db: Session, league_id: int
-) -> tuple[tuple[int, int], tuple[int, int]] | None:
+def _winners_and_losers_of_semis(db: Session, league_id: int) -> tuple[tuple[int, int], tuple[int, int]] | None:
     """
     Return ((winnerA, winnerB),(loserA, loserB)) if both semifinals exist and are scored; else None.
     """
@@ -237,9 +228,7 @@ def _finals_state(db: Session, league_id: int) -> dict[str, Any] | None:
     return {"week": week_f, "match": m, "scored": scored}
 
 
-def _champion_from_finals_state(
-    state: dict[str, Any], league_id: int, db: Session
-) -> dict[str, Any] | None:
+def _champion_from_finals_state(state: dict[str, Any], league_id: int, db: Session) -> dict[str, Any] | None:
     m: models.Match = state["match"]
     if not state["scored"]:
         return None
@@ -250,11 +239,7 @@ def _champion_from_finals_state(
         # Tie fallback: higher seed among finalists
         seeds: list[int] = _seed_order_by_tiebreakers(db, league_id)
         rank = {tid: i for i, tid in enumerate(seeds, start=1)}
-        champ_id = (
-            m.home_team_id
-            if rank.get(m.home_team_id, 9999) < rank.get(m.away_team_id, 9999)
-            else m.away_team_id
-        )
+        champ_id = m.home_team_id if rank.get(m.home_team_id, 9999) < rank.get(m.away_team_id, 9999) else m.away_team_id
 
     champ = db.get(models.Team, champ_id)
     return {
@@ -445,9 +430,7 @@ def advance_season(league_id: int, db: Session = Depends(get_db)) -> dict[str, A
     semis_exist = _find_weeks_like_suffix(db, league_id, "-PO-SF")
     if not semis_exist:
         semis = _ensure_semifinals(db, league_id)
-        semis.update(
-            {"ok": True, "action": "generated_playoffs", "state": _compute_state(db, league_id)}
-        )
+        semis.update({"ok": True, "action": "generated_playoffs", "state": _compute_state(db, league_id)})
         return semis
 
     # 3) If semis are scored but finals/bronze don't exist, create both

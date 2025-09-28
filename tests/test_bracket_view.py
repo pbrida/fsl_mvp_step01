@@ -114,9 +114,7 @@ def test_bracket_view_end_to_end(client):
 
     ids = []
     for nm in ["Alpha", "Beta", "Gamma", "Delta"]:
-        rr = client.post(
-            f"/leagues/{league_id}/join", json={"name": nm, "owner": nm[0]}
-        )
+        rr = client.post(f"/leagues/{league_id}/join", json={"name": nm, "owner": nm[0]})
         assert rr.status_code == 200
         ids.append(rr.json()["id"])
     t_alpha, t_beta, t_gamma, t_delta = ids
@@ -128,10 +126,7 @@ def test_bracket_view_end_to_end(client):
     draft_full(client, t_gamma, ["A3", "A4", "A5", "ETF1", "A7", "L1", "L2", "A2"])
 
     # Season + score regular season
-    assert (
-        client.post(f"/schedule/season/{league_id}", params={"weeks": 0}).status_code
-        == 200
-    )
+    assert client.post(f"/schedule/season/{league_id}", params={"weeks": 0}).status_code == 200
     assert client.post(f"/standings/{league_id}/close_season").status_code == 200
 
     # Initial bracket: regular

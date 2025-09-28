@@ -7,12 +7,14 @@ from sqlalchemy import (
     Boolean,
     Date,
     DateTime,
-    Enum as SAEnum,
     Float,
     ForeignKey,
     Integer,
     String,
     UniqueConstraint,
+)
+from sqlalchemy import (
+    Enum as SAEnum,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -34,9 +36,7 @@ class League(Base):
     name: Mapped[str] = mapped_column(String(120), unique=True, nullable=False)
 
     # Draft/roster config
-    roster_slots: Mapped[int] = mapped_column(
-        Integer, nullable=False, default=14
-    )  # total picks per team
+    roster_slots: Mapped[int] = mapped_column(Integer, nullable=False, default=14)  # total picks per team
     starters: Mapped[int] = mapped_column(Integer, nullable=False, default=8)  # active lineup size
 
     # Required buckets that must sum to starters
@@ -59,14 +59,10 @@ class Team(Base):
     name: Mapped[str] = mapped_column(String(120), nullable=False)  # <-- use .name (not team_name)
     owner: Mapped[str | None] = mapped_column(String(120), nullable=True)
 
-    league_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("leagues.id", ondelete="CASCADE"), index=True
-    )
+    league_id: Mapped[int] = mapped_column(Integer, ForeignKey("leagues.id", ondelete="CASCADE"), index=True)
     league = relationship("League", back_populates="teams")
 
-    roster_slots_rel = relationship(
-        "RosterSlot", back_populates="team", cascade="all, delete-orphan"
-    )
+    roster_slots_rel = relationship("RosterSlot", back_populates="team", cascade="all, delete-orphan")
     picks = relationship("DraftPick", back_populates="team")
 
     __table_args__ = (UniqueConstraint("league_id", "name", name="uq_team_league_name"),)
@@ -76,9 +72,7 @@ class RosterSlot(Base):
     __tablename__ = "roster_slots"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    team_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("teams.id", ondelete="CASCADE"), index=True
-    )
+    team_id: Mapped[int] = mapped_column(Integer, ForeignKey("teams.id", ondelete="CASCADE"), index=True)
     symbol: Mapped[str] = mapped_column(String(20), nullable=False)
 
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
@@ -95,12 +89,8 @@ class DraftPick(Base):
     __tablename__ = "draft_picks"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    league_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("leagues.id", ondelete="CASCADE"), index=True
-    )
-    team_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("teams.id", ondelete="CASCADE"), index=True
-    )
+    league_id: Mapped[int] = mapped_column(Integer, ForeignKey("leagues.id", ondelete="CASCADE"), index=True)
+    team_id: Mapped[int] = mapped_column(Integer, ForeignKey("teams.id", ondelete="CASCADE"), index=True)
 
     symbol: Mapped[str] = mapped_column(String(20), nullable=False)
     round: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
@@ -115,19 +105,13 @@ class Match(Base):
     __tablename__ = "matches"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    league_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("leagues.id", ondelete="CASCADE"), index=True
-    )
+    league_id: Mapped[int] = mapped_column(Integer, ForeignKey("leagues.id", ondelete="CASCADE"), index=True)
 
     # ISO week label like "2025-W39"
     week: Mapped[str] = mapped_column(String(10), nullable=False, index=True)
 
-    home_team_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("teams.id", ondelete="CASCADE"), index=True
-    )
-    away_team_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("teams.id", ondelete="CASCADE"), index=True
-    )
+    home_team_id: Mapped[int] = mapped_column(Integer, ForeignKey("teams.id", ondelete="CASCADE"), index=True)
+    away_team_id: Mapped[int] = mapped_column(Integer, ForeignKey("teams.id", ondelete="CASCADE"), index=True)
 
     # Filled when a week is closed
     home_points: Mapped[float | None] = mapped_column(Float, nullable=True)
@@ -146,20 +130,14 @@ class TeamScore(Base):
     __tablename__ = "team_scores"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    league_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("leagues.id", ondelete="CASCADE"), index=True
-    )
-    team_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("teams.id", ondelete="CASCADE"), index=True
-    )
+    league_id: Mapped[int] = mapped_column(Integer, ForeignKey("leagues.id", ondelete="CASCADE"), index=True)
+    team_id: Mapped[int] = mapped_column(Integer, ForeignKey("teams.id", ondelete="CASCADE"), index=True)
     period: Mapped[str] = mapped_column(String(10), index=True)  # ISO week label like "2025-W39"
     points: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
 
-    __table_args__ = (
-        UniqueConstraint("league_id", "team_id", "period", name="uq_team_score_period"),
-    )
+    __table_args__ = (UniqueConstraint("league_id", "team_id", "period", name="uq_team_score_period"),)
 
 
 # --- Player universe (securities) ---

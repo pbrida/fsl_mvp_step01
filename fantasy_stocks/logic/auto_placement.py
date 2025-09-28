@@ -27,7 +27,10 @@ def _count_primary(db: Session, team_id: int) -> tuple[dict[str, int], int]:
     """Return counts of ACTIVE starters by primary bucket and total active."""
     rows = (
         db.query(models.RosterSlot)
-        .filter(models.RosterSlot.team_id == team_id, models.RosterSlot.is_active == True)
+        .filter(
+            models.RosterSlot.team_id == team_id,
+            models.RosterSlot.is_active.is_(True),  # Ã¢â€ Â fix: no == True
+        )
         .all()
     )
     counts: dict[str, int] = {}

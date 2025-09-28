@@ -17,12 +17,7 @@ def test_advance_scores_earliest_unscored_week(client):
 
     # Join two teams
     for nm in ["A", "B"]:
-        assert (
-            client.post(
-                f"/leagues/{league_id}/join", json={"name": nm, "owner": nm}
-            ).status_code
-            == 200
-        )
+        assert client.post(f"/leagues/{league_id}/join", json={"name": nm, "owner": nm}).status_code == 200
 
     # Generate one week of schedule
     assert client.post(f"/schedule/generate/{league_id}", json={}).status_code == 200
@@ -81,18 +76,10 @@ def test_advance_generates_playoffs_after_season(client):
     league_id = r.json()["id"]
 
     for nm in ["Alphas", "Betas", "Gammas", "Deltas"]:
-        assert (
-            client.post(
-                f"/leagues/{league_id}/join", json={"name": nm, "owner": nm[0]}
-            ).status_code
-            == 200
-        )
+        assert client.post(f"/leagues/{league_id}/join", json={"name": nm, "owner": nm[0]}).status_code == 200
 
     # Generate a full single round-robin season
-    assert (
-        client.post(f"/schedule/season/{league_id}", params={"weeks": 0}).status_code
-        == 200
-    )
+    assert client.post(f"/schedule/season/{league_id}", params={"weeks": 0}).status_code == 200
 
     # Score the whole season (no unscored weeks remain)
     assert client.post(f"/standings/{league_id}/close_season").status_code == 200

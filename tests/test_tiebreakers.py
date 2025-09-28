@@ -149,9 +149,7 @@ def test_tiebreakers_orders_by_rules(client):
             assert k in row
 
     # Subset request with team_ids filter also works
-    r = client.get(
-        f"/standings/{league_id}/tiebreakers", params={"team_ids": f"{t2},{t1}"}
-    )
+    r = client.get(f"/standings/{league_id}/tiebreakers", params={"team_ids": f"{t2},{t1}"})
     assert r.status_code == 200
     subset = r.json()
     assert len(subset) == 2 and subset[0]["team_name"] == "Alpha"

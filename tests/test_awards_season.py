@@ -161,9 +161,7 @@ def test_awards_season(client):
 
     ids = []
     for nm in ["Alpha", "Beta", "Gamma", "Delta"]:
-        rr = client.post(
-            f"/leagues/{league_id}/join", json={"name": nm, "owner": nm[0]}
-        )
+        rr = client.post(f"/leagues/{league_id}/join", json={"name": nm, "owner": nm[0]})
         assert rr.status_code == 200
         ids.append(rr.json()["id"])
     t_alpha, t_beta, t_gamma, t_delta = ids
@@ -173,10 +171,7 @@ def test_awards_season(client):
     draft8(client, t_gamma, ["B1", "B2", "B3", "B4", "B5", "B6", "B7", "B8"])
     draft8(client, t_delta, ["B1", "B2", "B3", "B4", "B5", "B6", "B7", "B8"])
 
-    assert (
-        client.post(f"/schedule/season/{league_id}", params={"weeks": 0}).status_code
-        == 200
-    )
+    assert client.post(f"/schedule/season/{league_id}", params={"weeks": 0}).status_code == 200
     assert client.post(f"/standings/{league_id}/close_season").status_code == 200
 
     r = client.get(f"/awards/{league_id}/season")

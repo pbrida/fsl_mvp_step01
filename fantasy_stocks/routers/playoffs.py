@@ -76,23 +76,12 @@ def generate_playoffs(league_id: int, db: Session = Depends(get_db)) -> dict[str
     week_sf = f"{base}-PO-SF"
 
     # Prevent duplicates if already created
-    existing = (
-        db.query(models.Match)
-        .filter(models.Match.league_id == league_id, models.Match.week == week_sf)
-        .count()
-    )
+    existing = db.query(models.Match).filter(models.Match.league_id == league_id, models.Match.week == week_sf).count()
     if existing >= 2:
-        semis = (
-            db.query(models.Match)
-            .filter(models.Match.league_id == league_id, models.Match.week == week_sf)
-            .all()
-        )
+        semis = db.query(models.Match).filter(models.Match.league_id == league_id, models.Match.week == week_sf).all()
         return {
             "week": week_sf,
-            "semifinals": [
-                {"id": m.id, "home_team_id": m.home_team_id, "away_team_id": m.away_team_id}
-                for m in semis
-            ],
+            "semifinals": [{"id": m.id, "home_team_id": m.home_team_id, "away_team_id": m.away_team_id} for m in semis],
         }
 
     m1 = models.Match(league_id=league_id, week=week_sf, home_team_id=s1, away_team_id=s4)
@@ -133,9 +122,7 @@ def advance_playoffs(league_id: int, db: Session = Depends(get_db)) -> dict[str,
         .all()
     )
     if len(semis) < 2:
-        raise HTTPException(
-            status_code=400, detail="Semifinals not found. Generate playoffs first."
-        )
+        raise HTTPException(status_code=400, detail="Semifinals not found. Generate playoffs first.")
 
     # Determine winners with seed tiebreak if needed
     seed_order = _seed_order_by_tiebreakers(db, league_id)  # full order
@@ -156,14 +143,10 @@ def advance_playoffs(league_id: int, db: Session = Depends(get_db)) -> dict[str,
 
     # Avoid duplicates
     already_final = (
-        db.query(models.Match)
-        .filter(models.Match.league_id == league_id, models.Match.week == week_final)
-        .count()
+        db.query(models.Match).filter(models.Match.league_id == league_id, models.Match.week == week_final).count()
     )
     already_third = (
-        db.query(models.Match)
-        .filter(models.Match.league_id == league_id, models.Match.week == week_third)
-        .count()
+        db.query(models.Match).filter(models.Match.league_id == league_id, models.Match.week == week_third).count()
     )
     created = []
 
@@ -181,16 +164,8 @@ def advance_playoffs(league_id: int, db: Session = Depends(get_db)) -> dict[str,
         for _, m in created:
             db.refresh(m)
 
-    final = (
-        db.query(models.Match)
-        .filter(models.Match.league_id == league_id, models.Match.week == week_final)
-        .first()
-    )
-    third = (
-        db.query(models.Match)
-        .filter(models.Match.league_id == league_id, models.Match.week == week_third)
-        .first()
-    )
+    final = db.query(models.Match).filter(models.Match.league_id == league_id, models.Match.week == week_final).first()
+    third = db.query(models.Match).filter(models.Match.league_id == league_id, models.Match.week == week_third).first()
     return {
         "final": None
         if not final
@@ -222,7 +197,5 @@ def get_playoffs(league_id: int, db: Session = Depends(get_db)) -> dict[str, Any
             .order_by(models.Match.id.asc())
             .all()
         )
-        out[w] = [
-            {"id": m.id, "home_team_id": m.home_team_id, "away_team_id": m.away_team_id} for m in ms
-        ]
+        out[w] = [{"id": m.id, "home_team_id": m.home_team_id, "away_team_id": m.away_team_id} for m in ms]
     return out

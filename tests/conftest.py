@@ -1,15 +1,15 @@
 # tests/conftest.py
 import os
+
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-from fantasy_stocks.db import Base, get_db
-from fantasy_stocks.main import app
-
 # Make sure models are imported so Base has all tables
 from fantasy_stocks import models  # noqa: F401
+from fantasy_stocks.db import Base, get_db
+from fantasy_stocks.main import app
 
 # --- Enable test mode so idempotency decorator auto-fills keys ---
 os.environ["TESTING"] = "1"

@@ -13,12 +13,7 @@ router = APIRouter(prefix="/analytics", tags=["analytics"])
 
 
 def _teams_in_league(db: Session, league_id: int) -> list[models.Team]:
-    return (
-        db.query(models.Team)
-        .filter(models.Team.league_id == league_id)
-        .order_by(models.Team.id.asc())
-        .all()
-    )
+    return db.query(models.Team).filter(models.Team.league_id == league_id).order_by(models.Team.id.asc()).all()
 
 
 def _scored_matches(db: Session, league_id: int) -> list[models.Match]:

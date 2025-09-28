@@ -1,6 +1,7 @@
 # smoke.py — end-to-end test runner for Fantasy Stock League API
-import requests
 import json
+
+import requests
 
 BASE = "http://127.0.0.1:8000"
 

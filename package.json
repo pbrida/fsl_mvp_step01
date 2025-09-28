@@ -1,0 +1,26 @@
+{
+  "name": "fsl_mvp_step01",
+  "version": "1.0.0",
+  "description": "![CI](https://github.com/pbrida/fsl_mvp_step01/actions/workflows/ci.yml/badge.svg)",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "devDependencies": {
+    "prettier": "^3.6.2"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pbrida/fsl_mvp_step01.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/pbrida/fsl_mvp_step01/issues"
+  },
+  "homepage": "https://github.com/pbrida/fsl_mvp_step01#readme"
+}

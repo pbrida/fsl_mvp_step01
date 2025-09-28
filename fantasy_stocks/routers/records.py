@@ -177,9 +177,7 @@ def _streaks(db: Session, league_id: int) -> dict[str, Any]:
             lw_best = (tid, lw)
         if lu > lu_best[1]:
             lu_best = (tid, lu)
-        current.append(
-            {"team_id": tid, "team_name": _team_name(db, tid), "streak": current_run(seq)}
-        )
+        current.append({"team_id": tid, "team_name": _team_name(db, tid), "streak": current_run(seq)})
 
     longest_win = (
         None

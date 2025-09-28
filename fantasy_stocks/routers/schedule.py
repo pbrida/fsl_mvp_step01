@@ -39,23 +39,14 @@ def generate_week(league_id: int, db: Session = Depends(get_db)) -> dict[str, An
     if not league:
         raise HTTPException(status_code=404, detail="League not found")
 
-    teams = (
-        db.query(models.Team)
-        .filter(models.Team.league_id == league_id)
-        .order_by(models.Team.id.asc())
-        .all()
-    )
+    teams = db.query(models.Team).filter(models.Team.league_id == league_id).order_by(models.Team.id.asc()).all()
     if len(teams) < 2:
         raise HTTPException(status_code=400, detail="Need at least 2 teams")
 
     week = current_week_label()
 
     # If matches for this exact week already exist, do nothing (idempotent).
-    already = (
-        db.query(models.Match)
-        .filter(models.Match.league_id == league_id, models.Match.week == week)
-        .count()
-    )
+    already = db.query(models.Match).filter(models.Match.league_id == league_id, models.Match.week == week).count()
     if already:
         return {"ok": True, "week": week, "matches_created": 0}
 
@@ -82,9 +73,7 @@ def generate_week(league_id: int, db: Session = Depends(get_db)) -> dict[str, An
 
 
 @route.post("/season/{league_id}")
-def generate_season(
-    league_id: int, weeks: int = 0, db: Session = Depends(get_db)
-) -> dict[str, Any]:
+def generate_season(league_id: int, weeks: int = 0, db: Session = Depends(get_db)) -> dict[str, Any]:
     """
     Generate a season schedule using the "circle method" round-robin.
     - If weeks <= 0: generate a single round-robin (n-1 rounds).
@@ -95,12 +84,7 @@ def generate_season(
     if not league:
         raise HTTPException(status_code=404, detail="League not found")
 
-    teams = (
-        db.query(models.Team)
-        .filter(models.Team.league_id == league_id)
-        .order_by(models.Team.id.asc())
-        .all()
-    )
+    teams = db.query(models.Team).filter(models.Team.league_id == league_id).order_by(models.Team.id.asc()).all()
     n = len(teams)
     if n < 2:
         raise HTTPException(status_code=400, detail="Need at least 2 teams")
@@ -139,15 +123,11 @@ def generate_season(
 
         # Avoid duplicate creation if this week already exists
         existing = (
-            db.query(models.Match)
-            .filter(models.Match.league_id == league_id, models.Match.week == week_label)
-            .count()
+            db.query(models.Match).filter(models.Match.league_id == league_id, models.Match.week == week_label).count()
         )
         if existing == 0:
             for h, a in pairs:
-                m = models.Match(
-                    league_id=league_id, week=week_label, home_team_id=h, away_team_id=a
-                )
+                m = models.Match(league_id=league_id, week=week_label, home_team_id=h, away_team_id=a)
                 db.add(m)
                 created_matches += 1
             if pairs:

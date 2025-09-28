@@ -180,9 +180,7 @@ def search_players(
     min_cap: float | None = Query(None, description="Minimum market cap (inclusive)"),
     max_cap: float | None = Query(None, description="Maximum market cap (inclusive)"),
     sector: str | None = Query(None),
-    available_in_league: int | None = Query(
-        None, description="League ID to exclude rostered symbols"
-    ),
+    available_in_league: int | None = Query(None, description="League ID to exclude rostered symbols"),
     # NEW sorting
     sort: str | None = Query(None, description="symbol|market_cap|adp|proj_points"),
     order: str | None = Query(None, description="asc|desc"),

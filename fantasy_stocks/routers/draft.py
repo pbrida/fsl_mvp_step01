@@ -91,9 +91,7 @@ def make_pick(body: PickBody, db: Session = Depends(get_db)):
 
     placement = None
     if resolved:
-        placement = auto_place_new_slot(
-            db, team_id=team.id, slot_id=slot.id, primary_bucket=resolved
-        )
+        placement = auto_place_new_slot(db, team_id=team.id, slot_id=slot.id, primary_bucket=resolved)
 
     return {
         "ok": True,
@@ -108,9 +106,7 @@ def make_pick(body: PickBody, db: Session = Depends(get_db)):
         "slot": RosterSlotOut.from_model(slot).model_dump(),
         "bucket_resolved": bool(resolved),
         "placement": placement,
-        "hint": (
-            None if resolved else "No registry/DB mapping; slot left inactive until bucket is set."
-        ),
+        "hint": (None if resolved else "No registry/DB mapping; slot left inactive until bucket is set."),
     }
 
 

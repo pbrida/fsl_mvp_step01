@@ -22,15 +22,11 @@ def test_end_to_end_flow(client):
     league_id = league["id"]
 
     # 2) join two teams
-    r = client.post(
-        f"/leagues/{league_id}/join", json={"name": "Bulls", "owner": "Alice"}
-    )
+    r = client.post(f"/leagues/{league_id}/join", json={"name": "Bulls", "owner": "Alice"})
     assert r.status_code == 200, r.text
     t1 = r.json()["id"]
 
-    r = client.post(
-        f"/leagues/{league_id}/join", json={"name": "Bears", "owner": "Bob"}
-    )
+    r = client.post(f"/leagues/{league_id}/join", json={"name": "Bears", "owner": "Bob"})
     assert r.status_code == 200, r.text
     t2 = r.json()["id"]
 
@@ -110,9 +106,7 @@ def test_end_to_end_flow(client):
     # 7) generate schedule & close week
     r = client.post(f"/schedule/generate/{league_id}", json={})
     assert r.status_code == 200, r.text
-    r = client.post(
-        f"/standings/{league_id}/close_week", headers={"Idempotency-Key": "test-key"}
-    )
+    r = client.post(f"/standings/{league_id}/close_week", headers={"Idempotency-Key": "test-key"})
 
     assert r.status_code == 200, r.text
 

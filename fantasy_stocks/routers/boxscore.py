@@ -70,11 +70,7 @@ def team_boxscore(
         raise HTTPException(status_code=404, detail="Team not found in this league")
 
     # Confirm the week exists in schedule (optional sanity check)
-    has_week = (
-        db.query(models.Match.id)
-        .filter(models.Match.league_id == league_id, models.Match.week == week)
-        .first()
-    )
+    has_week = db.query(models.Match.id).filter(models.Match.league_id == league_id, models.Match.week == week).first()
     if not has_week:
         # We allow returning a box score even if the schedule hasn't included this week yet,
         # but it's helpful to alert the caller.
@@ -123,9 +119,7 @@ def team_boxscore(
     flex_total_points = sum(f["points"] for f in flex_used)
 
     # Unused active starters (should be uncommon)
-    used_ids = {c["slot_id"] for lst in primary_used.values() for c in lst} | {
-        f["slot_id"] for f in flex_used
-    }
+    used_ids = {c["slot_id"] for lst in primary_used.values() for c in lst} | {f["slot_id"] for f in flex_used}
     unused_active = [s for s in active if s["slot_id"] not in used_ids]
 
     return {

@@ -33,19 +33,16 @@ def _sum_active_proj_points(db: Session, team_id: int) -> float:
     symbols = [s.symbol for s in slots]
     # fetch all securities once
     sec_map: dict[str, models.Security] = {
-        s.symbol: s
-        for s in db.query(models.Security).filter(models.Security.symbol.in_(symbols)).all()
+        s.symbol: s for s in db.query(models.Security).filter(models.Security.symbol.in_(symbols)).all()
     }
     for s in slots:
         sec = sec_map.get(s.symbol)
-        # 👇 use to_float to safely handle None / missing
+        # ÃƒÂ°Ã…Â¸Ã¢â‚¬ËœÃ¢â‚¬Â¡ use to_float to safely handle None / missing
         total += to_float(getattr(sec, "proj_points", None))
     return total
 
 
-def _score_league_for_period(
-    db: Session, league: models.League, period: str
-) -> list[schemas.ScoreOut]:
+def _score_league_for_period(db: Session, league: models.League, period: str) -> list[schemas.ScoreOut]:
     """
     Score all matches for a league in a given ISO week `period` using PROJECTIONS stub:
     points = sum of proj_points for active starters.
@@ -104,26 +101,18 @@ def _score_league_for_period(
         home_name = home_team.name if home_team else f"Team {m.home_team_id}"
         away_name = away_team.name if away_team else f"Team {m.away_team_id}"
 
-        out.append(
-            schemas.ScoreOut(
-                team_id=m.home_team_id, team_name=home_name, period=period, points=home_pts
-            )
-        )
-        out.append(
-            schemas.ScoreOut(
-                team_id=m.away_team_id, team_name=away_name, period=period, points=away_pts
-            )
-        )
+        out.append(schemas.ScoreOut(team_id=m.home_team_id, team_name=home_name, period=period, points=home_pts))
+        out.append(schemas.ScoreOut(team_id=m.away_team_id, team_name=away_name, period=period, points=away_pts))
 
     db.commit()
     return out
 
 
 @route.post("/{league_id}/close_week", operation_id="standings_close_week")
-@with_idempotency("close_week_v1")  # 👈 idempotency decorator
+@with_idempotency("close_week_v1")  # ÃƒÂ°Ã…Â¸Ã¢â‚¬ËœÃ‹â€  idempotency decorator
 async def close_week(
     league_id: int,
-    request: Request,  # 👈 now a real type, not a forward ref
+    request: Request,  # ÃƒÂ°Ã…Â¸Ã¢â‚¬ËœÃ‹â€  now a real type, not a forward ref
     db: Session = Depends(get_db),
 ):
     """
@@ -150,7 +139,7 @@ async def close_week(
 
 
 @route.post("/{league_id}/close_season", operation_id="standings_close_season")
-@with_idempotency("close_season_v1")  # 👈 idempotency decorator
+@with_idempotency("close_season_v1")  # ÃƒÂ°Ã…Â¸Ã¢â‚¬ËœÃ‹â€  idempotency decorator
 async def close_season(
     league_id: int,
     request: Request,
@@ -330,10 +319,7 @@ def get_standings(league_id: int, persist: bool = False, db: Session = Depends(g
             .all()
         )
 
-        team_map = {
-            t.id: t.name
-            for t in db.query(models.Team).filter(models.Team.league_id == league.id).all()
-        }
+        team_map = {t.id: t.name for t in db.query(models.Team).filter(models.Team.league_id == league.id).all()}
 
         return [
             {
@@ -509,9 +495,7 @@ def tiebreakers(
         raise HTTPException(status_code=404, detail="League not found")
 
     # Base table (overall metrics)
-    base = _aggregate_table_rows(
-        db, league_id
-    )  # List[schemas.TableRow], computed from scored matches
+    base = _aggregate_table_rows(db, league_id)  # List[schemas.TableRow], computed from scored matches
     if team_ids:
         want: set[int] = {int(x) for x in team_ids.split(",") if x.strip()}
         base = [r for r in base if r.team_id in want]
@@ -550,7 +534,7 @@ def tiebreakers(
                 "h2h_win_pct": h2h_win_pct,
                 "point_diff": float(r.point_diff),
                 "points_for": float(r.points_for),
-                "reason": "Sorted by win_pct → h2h_win_pct → point_diff → points_for → coin",
+                "reason": "Sorted by win_pct -> h2h_win_pct -> point_diff -> points_for -> coin",
             }
         )
     return out
@@ -655,9 +639,9 @@ def _last5_from(results: list[str]) -> str:
         return "0-0-0"
     chunk = results[-5:]
     w = sum(1 for r in chunk if r == "W")
-    l = sum(1 for r in chunk if r == "L")
+    losses = sum(1 for r in chunk if r == "L")
     t = sum(1 for r in chunk if r == "T")
-    return f"{w}-{l}-{t}"
+    return f"{w}-{losses}-{t}"
 
 
 @route.get("/{league_id}/power_rankings", operation_id="standings_power_rankings")
@@ -869,9 +853,7 @@ def elo_rankings(league_id: int, k: float = 32.0, db: Session = Depends(get_db))
 
     # Start ratings & simple records
     rating: dict[int, float] = {tid: 1500.0 for tid in name_by_id.keys()}
-    rec: dict[int, dict[str, int]] = {
-        tid: {"wins": 0, "losses": 0, "ties": 0, "gp": 0} for tid in name_by_id.keys()
-    }
+    rec: dict[int, dict[str, int]] = {tid: {"wins": 0, "losses": 0, "ties": 0, "gp": 0} for tid in name_by_id.keys()}
 
     def expected(ra: float, rb: float) -> float:
         return 1.0 / (1.0 + 10.0 ** ((rb - ra) / 400.0))

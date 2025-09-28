@@ -28,9 +28,7 @@ def test_season_and_playoffs_flow(client):
     names = [("Alphas", "A"), ("Betas", "B"), ("Gammas", "C"), ("Deltas", "D")]
     team_ids = []
     for name, owner in names:
-        rr = client.post(
-            f"/leagues/{league_id}/join", json={"name": name, "owner": owner}
-        )
+        rr = client.post(f"/leagues/{league_id}/join", json={"name": name, "owner": owner})
         assert rr.status_code == 200, rr.text
         team_ids.append(rr.json()["id"])
     assert len(team_ids) == 4

@@ -108,9 +108,7 @@ def test_season_state_transitions(client):
 
     ids = []
     for nm in ["Alpha", "Beta", "Gamma", "Delta"]:
-        rr = client.post(
-            f"/leagues/{league_id}/join", json={"name": nm, "owner": nm[0]}
-        )
+        rr = client.post(f"/leagues/{league_id}/join", json={"name": nm, "owner": nm[0]})
         assert rr.status_code == 200
         ids.append(rr.json()["id"])
 
@@ -121,20 +119,12 @@ def test_season_state_transitions(client):
         ["A1", "A3", "A4", "A5", "ETF1", "A7", "L1", "L2"],
         ["A3", "A4", "A5", "ETF1", "A7", "L1", "L2", "A2"],
     ]
-    for tid, syms in zip(ids, pools):
+    for tid, syms in zip(ids, pools, strict=False):
         for s in syms:
-            assert (
-                client.post(
-                    "/draft/pick", json={"team_id": tid, "symbol": s}
-                ).status_code
-                == 200
-            )
+            assert client.post("/draft/pick", json={"team_id": tid, "symbol": s}).status_code == 200
 
     # Generate full season and score all regular-season weeks
-    assert (
-        client.post(f"/schedule/season/{league_id}", params={"weeks": 0}).status_code
-        == 200
-    )
+    assert client.post(f"/schedule/season/{league_id}", params={"weeks": 0}).status_code == 200
     assert client.post(f"/standings/{league_id}/close_season").status_code == 200
 
     # State: regular (no semis yet)

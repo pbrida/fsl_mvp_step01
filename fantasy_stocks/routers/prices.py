@@ -55,8 +55,8 @@ async def upload_prices_csv(file: UploadFile = File(...), db: Session = Depends(
     content = await file.read()
     try:
         text = content.decode("utf-8")
-    except Exception:
-        raise HTTPException(400, "CSV must be UTF-8 encoded")
+    except Exception as err:
+        raise HTTPException(400, "CSV must be UTF-8 encoded") from err
 
     reader = csv.DictReader(io.StringIO(text))
 
@@ -82,17 +82,15 @@ async def upload_prices_csv(file: UploadFile = File(...), db: Session = Depends(
         try:
             d = date.fromisoformat(date_raw)
         except ValueError:
-            raise HTTPException(
-                400, f"Row {line_no}: invalid date '{date_raw}' (expected YYYY-MM-DD)"
-            )
+            raise HTTPException(400, f"Row {line_no}: invalid date '{date_raw}' (expected YYYY-MM-DD)")
 
-        def to_float(s: str) -> float | None:
+        def to_float(s: str, ln=line_no) -> float | None:
             if s == "":
                 return None
             try:
                 return float(s)
             except ValueError:
-                raise HTTPException(400, f"Row {line_no}: invalid number '{s}'")
+                raise HTTPException(400, f"Row {ln}: invalid number '{s}'")
 
         open_val = to_float(open_raw)
         close_val = to_float(close_raw)

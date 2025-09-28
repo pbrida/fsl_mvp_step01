@@ -138,18 +138,14 @@ def claim_player(
         symbol = f"PID{body.player_id}"
         resolved = (body.primary_bucket or "").strip().upper() or None
 
-    slot = models.RosterSlot(
-        team_id=team.id, symbol=symbol, bucket=resolved or None, is_active=False
-    )
+    slot = models.RosterSlot(team_id=team.id, symbol=symbol, bucket=resolved or None, is_active=False)
     db.add(slot)
     db.commit()
     db.refresh(slot)
 
     placement = None
     if resolved:
-        placement = auto_place_new_slot(
-            db, team_id=team.id, slot_id=slot.id, primary_bucket=resolved
-        )
+        placement = auto_place_new_slot(db, team_id=team.id, slot_id=slot.id, primary_bucket=resolved)
 
     return {
         "ok": True,
@@ -158,11 +154,7 @@ def claim_player(
         "slot_id": slot.id,
         "symbol": symbol,
         "bucket_resolved": bool(resolved),
-        "hint": (
-            None
-            if resolved
-            else "No mapping for this ticker; slot left inactive until bucket is set."
-        ),
+        "hint": (None if resolved else "No mapping for this ticker; slot left inactive until bucket is set."),
     }
 
 
@@ -186,18 +178,14 @@ def add_player_immediate(
         symbol = f"PID{body.player_id}"
         resolved = (body.primary_bucket or "").strip().upper() or None
 
-    slot = models.RosterSlot(
-        team_id=team.id, symbol=symbol, bucket=resolved or None, is_active=False
-    )
+    slot = models.RosterSlot(team_id=team.id, symbol=symbol, bucket=resolved or None, is_active=False)
     db.add(slot)
     db.commit()
     db.refresh(slot)
 
     placement = None
     if resolved:
-        placement = auto_place_new_slot(
-            db, team_id=team.id, slot_id=slot.id, primary_bucket=resolved
-        )
+        placement = auto_place_new_slot(db, team_id=team.id, slot_id=slot.id, primary_bucket=resolved)
 
     return {
         "ok": True,
@@ -206,11 +194,7 @@ def add_player_immediate(
         "slot_id": slot.id,
         "symbol": symbol,
         "bucket_resolved": bool(resolved),
-        "hint": (
-            None
-            if resolved
-            else "No mapping for this ticker; slot left inactive until bucket is set."
-        ),
+        "hint": (None if resolved else "No mapping for this ticker; slot left inactive until bucket is set."),
     }
 
 

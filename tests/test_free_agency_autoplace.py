@@ -9,18 +9,14 @@ def test_free_agency_auto_placement_primary_then_flex_then_bench(client):
             "name": "FA Test League",
             "roster_slots": 14,
             "starters": 8,
-            "bucket_requirements": {
-                "LARGE_CAP": 8
-            },  # ignored by server, fixed rules apply
+            "bucket_requirements": {"LARGE_CAP": 8},  # ignored by server, fixed rules apply
         },
     )
     assert r.status_code == 200, r.text
     league_id = r.json()["id"]
 
     # Join a team
-    r = client.post(
-        f"/leagues/{league_id}/join", json={"name": "Sharks", "owner": "Sam"}
-    )
+    r = client.post(f"/leagues/{league_id}/join", json={"name": "Sharks", "owner": "Sam"})
     assert r.status_code == 200, r.text
     team_id = r.json()["id"]
 

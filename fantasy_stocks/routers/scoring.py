@@ -28,8 +28,7 @@ def _sum_active_proj_points(db: Session, team_id: int) -> float:
 
     symbols = [s.symbol for s in slots]
     sec_map: dict[str, models.Security] = {
-        s.symbol: s
-        for s in db.query(models.Security).filter(models.Security.symbol.in_(symbols)).all()
+        s.symbol: s for s in db.query(models.Security).filter(models.Security.symbol.in_(symbols)).all()
     }
     total = 0.0
     for s in slots:
@@ -50,11 +49,7 @@ def _close_week_proj(db: Session, league: models.League, period: str) -> _ProjCl
     Persists Match points/winner and TeamScore snapshots.
     Returns dict with matches_scored and totals (team_id -> points).
     """
-    matches = (
-        db.query(models.Match)
-        .filter(models.Match.league_id == league.id, models.Match.week == period)
-        .all()
-    )
+    matches = db.query(models.Match).filter(models.Match.league_id == league.id, models.Match.week == period).all()
 
     matches_scored = 0
     totals: dict[int, float] = {}
@@ -93,9 +88,7 @@ def _close_week_proj(db: Session, league: models.League, period: str) -> _ProjCl
             if ts:
                 ts.points = float(pts)
             else:
-                ts = models.TeamScore(
-                    league_id=league.id, team_id=tid, period=period, points=float(pts)
-                )
+                ts = models.TeamScore(league_id=league.id, team_id=tid, period=period, points=float(pts))
                 db.add(ts)
             totals[tid] = float(pts)
 

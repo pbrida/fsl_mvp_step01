@@ -15,8 +15,7 @@ def _get_et_zone() -> ZoneInfo:
             continue
     # If we get here, tzdata likely isn't installed or available.
     raise RuntimeError(
-        "No IANA timezone data found for Eastern Time. "
-        "Install tzdata inside your venv: pip install tzdata"
+        "No IANA timezone data found for Eastern Time. Install tzdata inside your venv: pip install tzdata"
     )
 
 

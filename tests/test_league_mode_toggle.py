@@ -15,8 +15,6 @@ def test_league_mode_toggle_roundtrip(client):
     assert r_patch.json()["scoring_mode"] == "LIVE"
 
     # Toggle back to PROJECTIONS (idempotent ok)
-    r_patch2 = client.patch(
-        f"/leagues/{league_id}/mode", json={"scoring_mode": "PROJECTIONS"}
-    )
+    r_patch2 = client.patch(f"/leagues/{league_id}/mode", json={"scoring_mode": "PROJECTIONS"})
     assert r_patch2.status_code == 200
     assert r_patch2.json()["scoring_mode"] == "PROJECTIONS"

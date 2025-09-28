@@ -76,16 +76,12 @@ def test_team_needs_primary_then_flex(client):
     # Primary buckets:
     assert req["LARGE_CAP"]["need"] == 2 and req["LARGE_CAP"]["got"] == 2
     assert req["MID_CAP"]["need"] == 1 and req["MID_CAP"]["got"] == 1
-    assert (
-        req["SMALL_CAP"]["need"] == 2 and req["SMALL_CAP"]["got"] == 1
-    )  # still need 1 small
+    assert req["SMALL_CAP"]["need"] == 2 and req["SMALL_CAP"]["got"] == 1  # still need 1 small
     assert req["ETF"]["need"] == 1 and req["ETF"]["got"] == 1
     # FLEX not filled yet (no surplus primaries)
     assert req["FLEX"]["need"] == 2 and req["FLEX"]["got"] == 0
 
     # Summary:
     assert data["summary"]["starters_required"] == 8
-    assert data["summary"]["starters_got"] == (
-        2 + 1 + 1 + 1 + 0
-    )  # primary_got sum + flex_got = 5
+    assert data["summary"]["starters_got"] == (2 + 1 + 1 + 1 + 0)  # primary_got sum + flex_got = 5
     assert data["summary"]["starters_remaining"] == 3

@@ -114,9 +114,7 @@ def test_advance_full_playoff_progression_to_champion(client):
 
     ids = []
     for nm in ["Alpha", "Beta", "Gamma", "Delta"]:
-        rr = client.post(
-            f"/leagues/{league_id}/join", json={"name": nm, "owner": nm[0]}
-        )
+        rr = client.post(f"/leagues/{league_id}/join", json={"name": nm, "owner": nm[0]})
         assert rr.status_code == 200
         ids.append(rr.json()["id"])
     t_alpha, t_beta, t_gamma, t_delta = ids
@@ -125,15 +123,10 @@ def test_advance_full_playoff_progression_to_champion(client):
     draft_full(client, t_alpha, ["A1", "A2", "A3", "A4", "A5", "ETF1", "A6", "A7"])
     draft_full(client, t_delta, ["A1", "A3", "A4", "A5", "ETF1", "A6", "A7", "L1"])
     draft_full(client, t_beta, ["A1", "A3", "A4", "A5", "ETF1", "A7", "L1", "L2"])
-    draft_full(
-        client, t_gamma, ["A3", "A4", "A5", "ETF1", "A7", "L1", "L2", "A2"]
-    )  # avoid duplicate
+    draft_full(client, t_gamma, ["A3", "A4", "A5", "ETF1", "A7", "L1", "L2", "A2"])  # avoid duplicate
 
     # Full season, then score all regular weeks
-    assert (
-        client.post(f"/schedule/season/{league_id}", params={"weeks": 0}).status_code
-        == 200
-    )
+    assert client.post(f"/schedule/season/{league_id}", params={"weeks": 0}).status_code == 200
     assert client.post(f"/standings/{league_id}/close_season").status_code == 200
 
     # 1) Generate semifinals

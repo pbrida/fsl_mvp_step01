@@ -1,0 +1,14 @@
+﻿* text=auto
+
+# Force LF for source; CRLF for Windows scripts
+*.py text eol=lf
+*.sh text eol=lf
+*.ps1 text eol=crlf
+*.bat text eol=crlf
+
+# Vendor / virtualenv: don't normalize or warn
+.venv/** -text
+node_modules/** -text
+**/site-packages/** -text
+**/*.dist-info/** -text
+alembic/** -text

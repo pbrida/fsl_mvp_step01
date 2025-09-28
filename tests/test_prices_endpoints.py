@@ -1,5 +1,6 @@
-from io import BytesIO
 import json
+from io import BytesIO
+
 import pytest
 
 
@@ -40,11 +41,9 @@ def test_prices_bulk_upsert_is_idempotent(client):
 
 
 def test_prices_csv_upload_with_good_data(client):
-    csv_content = (
-        "symbol,date,open,close\n"
-        "AAPL,2025-09-15,226.12,228.43\n"
-        "SPY,2025-09-15,555.10,557.20\n"
-    ).encode("utf-8")
+    csv_content = ("symbol,date,open,close\nAAPL,2025-09-15,226.12,228.43\nSPY,2025-09-15,555.10,557.20\n").encode(
+        "utf-8"
+    )
 
     files = {"file": ("prices.csv", BytesIO(csv_content), "text/csv")}
     r = client.post("/prices/csv", files=files)
@@ -69,9 +68,7 @@ def test_prices_csv_upload_with_good_data(client):
         ("symbol,date,open,close\nAAPL,2025-09-15,one,2\n", 400, "invalid number"),
     ],
 )
-def test_prices_csv_validation_errors(
-    client, csv_text, expected_status, expected_msg_frag
-):
+def test_prices_csv_validation_errors(client, csv_text, expected_status, expected_msg_frag):
     files = {"file": ("prices.csv", BytesIO(csv_text.encode("utf-8")), "text/csv")}
     r = client.post("/prices/csv", files=files)
     assert r.status_code == expected_status

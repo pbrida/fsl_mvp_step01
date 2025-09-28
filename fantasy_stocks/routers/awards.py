@@ -87,9 +87,7 @@ def _all_team_scores(db: Session, league_id: int) -> list[models.TeamScore]:
 
 
 @router.get("/{league_id}/weekly")
-def weekly_awards(
-    league_id: int, period: str | None = None, db: Session = Depends(get_db)
-) -> dict[str, Any]:
+def weekly_awards(league_id: int, period: str | None = None, db: Session = Depends(get_db)) -> dict[str, Any]:
     """
     Weekly Awards from scored matches. If 'period' omitted, uses latest scored week.
     Returns: top_scorer, narrowest_win, blowout, highest_scoring_game (or nulls if no data).
@@ -292,9 +290,7 @@ def season_awards(league_id: int, db: Session = Depends(get_db)) -> dict[str, An
         }
 
     # winningest by (win_pct, point_diff)
-    winningest_tid = max(
-        stats.keys(), key=lambda tid: (stats[tid]["win_pct"], stats[tid]["point_diff"])
-    )
+    winningest_tid = max(stats.keys(), key=lambda tid: (stats[tid]["win_pct"], stats[tid]["point_diff"]))
     winningest = {
         "team_id": winningest_tid,
         "team_name": _team_name(db, winningest_tid),

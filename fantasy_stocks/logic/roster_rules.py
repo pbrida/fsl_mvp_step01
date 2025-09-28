@@ -27,9 +27,7 @@ FIXED_STARTER_SLOTS: dict[str, int] = {
 
 
 class RosterRules(BaseModel):
-    starters: dict[str, int] = Field(
-        ..., description="Exact starter slot counts by bucket (includes FLEX)."
-    )
+    starters: dict[str, int] = Field(..., description="Exact starter slot counts by bucket (includes FLEX).")
     roster_size: int = Field(14, description="Total roster size (starters + bench).")
     starters_total: int = Field(8, description="Total number of starters.")
     bench_size: int = Field(6, description="Total bench slots.")

@@ -33,9 +33,7 @@ FIXED_BENCH_SIZE = FIXED_ROSTER_SIZE - FIXED_STARTERS_TOTAL
 
 
 class RosterRules(BaseModel):
-    starters: dict[str, int] = Field(
-        ..., description="Exact starter slot counts by bucket (includes FLEX)."
-    )
+    starters: dict[str, int] = Field(..., description="Exact starter slot counts by bucket (includes FLEX).")
     roster_size: int = Field(14, description="Total roster size (starters + bench).")
     starters_total: int = Field(8, description="Total number of starters.")
     bench_size: int = Field(6, description="Total bench slots.")
@@ -85,7 +83,7 @@ def create_league(body: schemas.LeagueCreate, db: Session = Depends(get_db)):
 @route.get("/", response_model=list[schemas.LeagueOut])
 def list_leagues(db: Session = Depends(get_db)):
     leagues = db.query(models.League).order_by(models.League.id.asc()).all()
-    return [schemas.LeagueOut.model_validate(l) for l in leagues]
+    return [schemas.LeagueOut.model_validate(league) for league in leagues]
 
 
 @route.get("/{league_id}", response_model=schemas.LeagueOut)
@@ -101,12 +99,7 @@ def list_teams(league_id: int, db: Session = Depends(get_db)):
     league = db.get(models.League, league_id)
     if not league:
         raise HTTPException(status_code=404, detail="League not found")
-    teams = (
-        db.query(models.Team)
-        .filter(models.Team.league_id == league.id)
-        .order_by(models.Team.id.asc())
-        .all()
-    )
+    teams = db.query(models.Team).filter(models.Team.league_id == league.id).order_by(models.Team.id.asc()).all()
     return [schemas.TeamOut.model_validate(t) for t in teams]
 
 
@@ -117,14 +110,10 @@ def join_league(league_id: int, body: schemas.JoinLeague, db: Session = Depends(
         raise HTTPException(status_code=404, detail="League not found")
 
     dup = (
-        db.query(models.Team)
-        .filter(models.Team.league_id == league.id, models.Team.name == body.name.strip())
-        .first()
+        db.query(models.Team).filter(models.Team.league_id == league.id, models.Team.name == body.name.strip()).first()
     )
     if dup:
-        raise HTTPException(
-            status_code=400, detail="A team with that name already exists in this league"
-        )
+        raise HTTPException(status_code=400, detail="A team with that name already exists in this league")
 
     team = models.Team(
         league_id=league.id,
@@ -152,11 +141,7 @@ def update_settings(league_id: int, body: LeagueSettingsUpdate, db: Session = De
     if not league:
         raise HTTPException(status_code=404, detail="League not found")
 
-    if (
-        body.roster_slots is not None
-        or body.starters is not None
-        or body.bucket_requirements is not None
-    ):
+    if body.roster_slots is not None or body.starters is not None or body.bucket_requirements is not None:
         raise HTTPException(
             status_code=400,
             detail="League uses fixed roster rules; roster_slots, starters, and bucket_requirements are read-only.",
