@@ -1,6 +1,6 @@
 [
   {
-    "team_id": 29,
+    "team_id": 31,
     "team_name": "Team Alpha",
     "wins": 1,
     "losses": 0,
@@ -12,7 +12,7 @@
     "win_pct": 1.0
   },
   {
-    "team_id": 30,
+    "team_id": 32,
     "team_name": "Team Beta",
     "wins": 0,
     "losses": 1,
