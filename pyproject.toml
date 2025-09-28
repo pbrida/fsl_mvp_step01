@@ -1,0 +1,14 @@
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+exclude = ["alembic/*"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B"]
+ignore = [
+  "B008", # FastAPI Depends/UploadFile defaults
+  "B904", # "raise ... from ..." recommendation
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["B011", "B007", "F841", "E501"]
