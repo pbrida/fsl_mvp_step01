@@ -57,3 +57,5 @@ Docs (auto): http://127.0.0.1:8000/docs
 - Add database models for leagues, users, rosters
 - Add endpoints for creating a league
 - Add a simple in-memory "draft room"
+
+![CI](https://github.com/pbrida/fsl_mvp_step01/actions/workflows/ci.yml/badge.svg)
